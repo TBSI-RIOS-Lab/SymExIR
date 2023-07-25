@@ -331,10 +331,11 @@ def test_regex_sample():
 
     gs = parse.extra_slice_token(test_case_shufflevector, "shufflevector")
     assert gs != None
-    assert gs["vs"] == None
+    assert gs["v1_vs"] == None
+    assert gs["v1_ty"] == "i32"
     assert gs["v1"] == "%v1"
-    assert gs["v2"] == "%v2"
-    assert gs["v3"] == "<i32 0, i32 4, i32 1, i32 5>"
+    assert gs["v2_vs"] == None
+    assert gs["v2_ty"] == "i32"
 
     gs = parse.extra_slice_token(test_case_trunc, "trunc")
     assert gs != None
@@ -565,6 +566,19 @@ def test_parse_instr_call():
     parse.parse_instr_call("%2 = call i8 @llvm.smin.i8(i8 42, i8 -24)", "call", smt)
     parse.parse_instr_call("%3 = call i8 @llvm.umax.i8(i8 42, i8 -24)", "call", smt)
     parse.parse_instr_call("%4 = call i8 @llvm.umin.i8(i8 42, i8 -24)", "call", smt)
+    # smt.dump()
+
+
+def test_parse_instr_shufflevector():
+    smt = st.VerificationInfo()
+    instr_1 = "%1 = shufflevector <2 x i32> < i32 1, i32 2>, <2 x i32> < i32 3, i32 4>, <3 x i32> <i32 0, i32 1, i32 2>"
+    instr_2 = "%2 = shufflevector <2 x i32> < i32 1, i32 2>, <2 x i32> < i32 3, i32 4>, <3 x i32> <i32 3, i32 1, i32 2>"
+    data_token = parse.get_instr_dict(
+        instr_1,
+        "shufflevector",
+    )
+    parse.parse_instr_shufflevector(instr_1, smt, data_token)
+    parse.parse_instr(instr_2, "shufflevector", smt)
     smt.dump()
 
 
@@ -584,6 +598,7 @@ if __name__ == "__main__":
     test_is_vector_type_basedon_dict_token()
     test_get_ready_two_value_v()
     test_get_smt_vector()
+    test_parse_instr_shufflevector()
     test_get_nn_basedOn_type_v()
     test_parse_instr_two_op_function_v()
     test_parse_instr_vector()

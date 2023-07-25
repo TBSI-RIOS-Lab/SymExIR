@@ -152,6 +152,8 @@ regex_tmp = ".*"
 regex_cconv_flag = "(fastcc |ccc |coldcc |cc 10 |cc 11 |webkit_jscc |anyregcc |preserve_mostcc |cxx_fast_tlscc |tailcc |swiftcc |swifttailcc |cfguard_checkcc |cc <.*>)"
 # NOTE: The poison value is ignored.
 
+vec_ty_example = "<1 x i32>"
+
 
 class SliceToken:
     def __init__(
@@ -292,11 +294,11 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             "^"
             + instr_type
             + " "
-            + regex_vscale_n_ty
+            + "<((?P<v1_vs>.*?) x ){0,1}(?P<v1_n>.*?) x (?P<v1_ty>.*?)>"
             + " (?P<v1>.*?), "
-            + regex_vscale_n_ty
+            + "<((?P<v2_vs>.*?) x ){0,1}(?P<v2_n>.*?) x (?P<v2_ty>.*?)>"
             + " (?P<v2>.*?), "
-            + regex_vscale_n_ty
+            + "<((?P<mask_vs>.*?) x ){0,1}(?P<mask_n>.*?) x (.*?)>"
             + " (?P<v3>.*?)$"
         )
     elif instr_type in conversion_operations_group:
@@ -1228,16 +1230,17 @@ def parse_instr_llvm_maximum(
 
 def get_abs_result(val):
     if isinstance(val, List):
-        return [z3.simplify(z3.Abs(val[i])) for i in range(len(val))]
+        a = z3.simplify(z3.Abs(val[0]))
+        return [z3.Abs(val[i]) for i in range(len(val))]
     else:
-        return z3.simplify(z3.Abs(val))
+        return z3.Abs(val)
 
 
 def get_fpabs_result(val):
     if isinstance(val, List):
-        return [z3.simplify(z3.fpAbs(val[i])) for i in range(len(val))]
+        return [z3.fpAbs(val[i]) for i in range(len(val))]
     else:
-        return z3.simplify(z3.fpAbs(val))
+        return z3.fpAbs(val)
 
 
 def get_sqrt_result_single(val):
@@ -1261,9 +1264,9 @@ def parse_instr_llvm_single_argument(
 ):
     argus = separate_argument(argments)
     assert len(argus) == 1
-    ty, val = argus[0]
+    ty, val = argus[0][0], argus[0][1]
     value = get_single_value(val, smt_block, ty)
-    res = z3.simplify(func(value))
+    res = func(value)
     smt_block.add_new_value(value_name, res, rs_ty)
 
 
@@ -1304,7 +1307,7 @@ def parse_instr_llvm_fma(
     first = get_single_value(val_first, smt_block, val_type_first)
     second = get_single_value(val_second, smt_block, val_type_second)
     third = get_single_value(val_third, smt_block, val_type_third)
-    res = z3.simplify(get_fpma_result, first, second, third)
+    res = get_fpma_result(first, second, third)
     smt_block.add_new_value(value_name, res, rs_ty)
 
 
@@ -1379,7 +1382,6 @@ def get_right_key(function_str: str):
     return None
 
 
-# TODO: Finish call!
 def parse_instr_call(
     instr: str,
     instr_type: str,
@@ -1434,7 +1436,48 @@ instr_function_simple_dict = {
 }
 
 
-instr_function_vector_type_dict = {"shufflevector": None}
+# TODO: add vscale.
+def parse_instr_shufflevector(
+    instr: str, smt_block: st.VerificationInfo, data_token: Dict[str, str] | None
+):
+    def extra_loc_from_mask(mask: str):
+        res_list = mask.strip("<").strip(">").strip(" ").split(",")
+        mask_res = [
+            int(res_list[i].strip().split(" ")[1].strip(" "))
+            for i in range(len(res_list))
+        ]
+        return mask_res
+
+    value_name = re.split("=", instr.strip())[0].strip(" ")
+    if data_token == None:
+        data_token = get_instr_dict(instr, "shufflevector")
+
+    v1, v2, mask, v1_type, v2_type, v1_size, v2_size, mask_size = (
+        data_token["v1"],
+        data_token["v2"],
+        data_token["v3"],
+        data_token["v1_ty"],
+        data_token["v2_ty"],
+        data_token["v1_n"],
+        data_token["v2_n"],
+        data_token["mask_n"],
+    )
+
+    value_1 = get_single_value(v1, smt_block, vec_ty_example)
+    value_2 = get_single_value(v2, smt_block, vec_ty_example)
+    assert isinstance(value_1, List) and isinstance(value_2, List)
+    value_before = value_1 + value_2
+    mask_list = extra_loc_from_mask(mask)
+    res_list = []
+    for i in mask_list:
+        if not (i < len(value_before)):
+            raise OverflowError("")
+        res_list.append(value_before[i])
+    res_ty = "<" + mask_size + " x " + v1_type + ">"
+    smt_block.add_new_value(value_name, res_list, res_ty)
+
+
+instr_function_vector_type_dict = {"shufflevector"}
 
 
 def parse_instr_two_op_function_v(
@@ -1773,7 +1816,14 @@ instr_function_vector_dict = {
 
 
 def is_vectortype_instr(instr_type: str):
-    if instr_type in instr_function_vector_type_dict.keys():
+    if instr_type in instr_function_vector_type_dict:
+        return True
+    else:
+        return False
+
+
+def is_call_instr(instr_type: str):
+    if instr_type in call_type:
         return True
     else:
         return False
@@ -1848,8 +1898,10 @@ def parse_instr_vector(
 # TODO: add filter.
 def parse_instr(instr: str, instr_type: str, smt_block: st.VerificationInfo):
     instr_info_dict = get_instr_dict(instr, instr_type)
-    if is_vectortype_instr(instr):
-        pass
+    if is_vectortype_instr(instr_type):
+        parse_instr_shufflevector(instr, smt_block, instr_info_dict)
+    elif is_call_instr(instr):
+        parse_instr_call(instr, instr_type, smt_block, instr_info_dict)
     else:
         if not is_vectortype_basedon_dict_token(instr_info_dict):
             parse_instr_basic(instr, instr_type, smt_block, instr_info_dict)
