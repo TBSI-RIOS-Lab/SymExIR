@@ -115,7 +115,13 @@ conversion_operations_group = {
     "ptrtoint",
 }
 
-aggregate_operations_group = {"extractvalue", "insertvalue", "getelementptr"}
+""""
+    Only support the most basic edtion just like:
+    <result> = extractvalue {i32, float} %agg, 0
+    %agg1 = insertvalue {i32, float} undef, i32 1, 0
+"""
+extractvalue_group = {"extractvalue"}
+insertvalue_group = {"insertvalue"}
 icmp_group = {"icmp"}
 fcmp_group = {"fcmp"}
 select_type = {"select"}
@@ -126,14 +132,17 @@ over_bb_type = {
     "landingpad",
     "catchpad",
     "cleanuppad",
-    "getelementptr",
 }  # TODO: add description of getelementptr in document
+
 simple_atomic_group = {"fence"}
 memory_group = {"cmpxchg", "atomicrmw", "addrspacecast"}
-store_type = {"store"}  # TODO: Is this instr real meaningful?
+store_type = {
+    "store"
+}  # Actually for now the "store" is meaningless for the whole program, but we still finish that.
 alloca_type = {"alloca"}
 load_type = {"load"}
 call_type = {"call"}
+getelementptr_type = {"getelementptr"}
 llvm_instr = {"llvm.minnum"}
 
 
@@ -311,8 +320,30 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + "(?P<ty2><.*x.*>|.*?)$"
         )
 
-    elif instr_type in aggregate_operations_group:
-        pattern = re.compile("")  # Return empty dict.
+    elif instr_type in extractvalue_group:
+        pattern = re.compile(
+            "^"
+            + instr_type
+            + " "
+            + "(?P<type>\{.*?\}) "
+            + "(?P<op_val>.*?), "
+            + "(?P<idx>.*?)"
+            + "$"
+        )
+
+    elif instr_type in insertvalue_group:
+        pattern = re.compile(
+            "^"
+            + instr_type
+            + " "
+            + "(?P<type>\{.*?\}) "
+            + "(?P<op_val>.*?), "
+            + "(?P<idx>.*?)"
+            + "$"
+        )
+
+    elif instr_type in getelementptr_type:
+        pattern = re.compile("")
 
     elif instr_type in icmp_group:
         pattern = re.compile(
@@ -350,6 +381,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
         pattern = re.compile("")
 
     elif instr_type in store_type:
+        # The type of the <pointer> operand must be a pointer to the first class type of the <value> operand
         pattern = re.compile(
             "^"
             + instr_type
@@ -357,7 +389,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + "(atomic ){0,1}"
             + "(volatile ){0,1}"
             + "(?P<ty><.*x.*>|.*?) "
-            + "(?P<value><.*x.*>|.*?), ptr "
+            + "(?P<value><.*x.*>|.*?), (?P<ptr_ty><.*x.*>\*|.*?) "
             + "(?P<pointer>.*?)"
             + "(,.*?){0,1}$"
         )
@@ -404,6 +436,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             )
         else:
             pattern = re.compile("")
+
     if pattern != None:
         gs = re.search(
             pattern,
@@ -413,6 +446,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
 
 
 Name2Type = {
+    "ptr": st.DataType.IntegerType,  # The format of the pointer is specified as i64 by default.
     "i1": st.DataType.IntegerType,
     "i8": st.DataType.IntegerType,
     "i16": st.DataType.IntegerType,
@@ -433,6 +467,7 @@ TypeAlias = {"f32:32:32": "float", "f64:64:64": "double", "f128:128:128": "quad"
 
 
 TypePrecision = {
+    "ptr": 64,
     "i1": 1,
     "i8": 8,
     "i16": 16,
@@ -464,6 +499,10 @@ SimpleType = {
     "v64",
     "v128",
 }
+
+
+def change_ptr_format(precision: int):
+    TypePrecision["ptr"] = precision
 
 
 def get_inner_type(instr_type: str) -> st.DataType:
@@ -549,6 +588,16 @@ def parse_instr_load(value_name: str, data_token: Dict, smt_block: st.Verificati
         elif is_vec_type(ty):
             value = get_smt_vector(value_name, ty)
             smt_block.add_new_value(value_name, value, ty)
+
+
+def parse_instr_getelementptr(
+    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+):
+    if data_token != None and len(data_token):
+        raise RuntimeError("The data_token for getelementptr should be empty.\n")
+
+    value = get_basic_smt_value(value_name, "ptr")
+    smt_block.add_new_value(value_name, value, "ptr")
 
 
 def is_vec_type(value_type: str):
@@ -1403,6 +1452,7 @@ def parse_instr_call(
 
 instr_function_simple_dict = {
     "load": parse_instr_load,
+    "getelementptr": parse_instr_getelementptr,
     "add": parse_instr_add,
     "sub": parse_instr_sub,
     "mul": parse_instr_mul,
@@ -1815,6 +1865,14 @@ instr_function_vector_dict = {
 }
 
 
+def is_no_return_instr(instr_type: str):
+    return True if instr_type == "store" else False
+
+
+def parse_instr_no_return():
+    pass
+
+
 def is_vectortype_instr(instr_type: str):
     if instr_type in instr_function_vector_type_dict:
         return True
@@ -1841,8 +1899,12 @@ def get_type_from_dict_token(token: Dict):
         raise RuntimeError("There is no type in token.keys!\n")
 
 
-def is_vectortype_basedon_dict_token(token: Dict):
+def is_vectortype_basedon_dict_token(token: Dict, instr, instr_type):
     keys = token.keys()
+
+    if instr_type in getelementptr_type:
+        return False
+
     if "type" in keys:
         return is_vec_type(token["type"])
     elif "ty" in keys:
@@ -1850,7 +1912,9 @@ def is_vectortype_basedon_dict_token(token: Dict):
     elif "ty1" in keys:
         return is_vec_type(token["ty1"])
     else:
-        raise RuntimeError("There is no type in token.keys!\n")
+        raise RuntimeError(
+            "There is no type in token.keys!.\n The instr is {}.\n".format(instr)
+        )
 
 
 def get_instr_dict(instr: str, instr_type: str):
@@ -1859,7 +1923,7 @@ def get_instr_dict(instr: str, instr_type: str):
         slice = re.split("=", slice)[1].strip(" ")
     slice_token_math = extra_slice_token(slice, instr_type)
     if slice_token_math == None:
-        raise RuntimeError("The instr dict token is None!")
+        raise RuntimeError("The instr({}) dict token is None!".format(instr))
     return slice_token_math.groupdict()
 
 
@@ -1876,7 +1940,7 @@ def parse_instr_basic(
     if instr_type in instr_function_simple_dict.keys():
         instr_function_simple_dict[instr_type](name, instr_infoDict, smt_block)
     else:
-        raise st.NotImplementedError("The instr is not implemented")
+        raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
 
 
 def parse_instr_vector(
@@ -1898,12 +1962,14 @@ def parse_instr_vector(
 # TODO: add filter.
 def parse_instr(instr: str, instr_type: str, smt_block: st.VerificationInfo):
     instr_info_dict = get_instr_dict(instr, instr_type)
-    if is_vectortype_instr(instr_type):
+    if is_no_return_instr(instr_type):
+        parse_instr_no_return()
+    elif is_vectortype_instr(instr_type):
         parse_instr_shufflevector(instr, smt_block, instr_info_dict)
     elif is_call_instr(instr):
         parse_instr_call(instr, instr_type, smt_block, instr_info_dict)
     else:
-        if not is_vectortype_basedon_dict_token(instr_info_dict):
+        if not is_vectortype_basedon_dict_token(instr_info_dict, instr, instr_type):
             parse_instr_basic(instr, instr_type, smt_block, instr_info_dict)
         else:
             parse_instr_vector(instr, instr_type, smt_block)

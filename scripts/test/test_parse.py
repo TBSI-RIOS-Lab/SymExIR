@@ -17,10 +17,10 @@ test_case_float = [
     "store double %7, double* %5, align 8, !tbaa !4",
     "%8 = getelementptr inbounds [1024 x double], [1024 x double]* @a, i64 0, i64 %4",
     "%9 = load double, double* %8, align 8, !tbaa !4",
-    "%10 = fadd double %9, %0",
+    "%10 = fadd double %9, %1",
     "%11 = fmul double %10, %1",
     "store double %11, double* %8, align 8, !tbaa !4",
-    "%12 = add nuw nsw i64 %4, 1",
+    "%12 = add nuw nsw i64 1, 1",
     "%13 = icmp eq i64 %12, 1024",
 ]
 
@@ -155,6 +155,7 @@ def test_regex_sample():
     )
 
     test_case_store = "store i32 3, ptr %ptr"
+    test_case_store_float = "store double %7, double* %5, align 8, !tbaa !4"
     test_case_alloca = "alloca i32"
     test_case_alloca_align = "alloca i32, i32 4, align 1024"
     test_case_atomicrmw = "atomicrmw add ptr %ptr, i32 1"
@@ -162,6 +163,11 @@ def test_regex_sample():
     test_case_load_v = "load <3 x i1>, <3 x i1>* %1, align 8"
     test_case_call_1 = "call i8 @llvm.smax.i8(i8 42, i8 -24)"
     test_case_call_2 = "call <4 x i32> @llvm.smax.v4i32(<4 x i32> %a, <4 x i32> %b)"
+    test_case_getelementptr = (
+        "getelementptr inbounds [1024 x double], [1024 x double]* @a, i64 0, i64 %4"
+    )
+    test_case_insertvalue = "insertvalue {i32, float} undef, i32 1, 0"
+    test_case_extractvalue = "extractvalue {i32, float} %agg, 0"
 
     gs: re.Match[str] | None = parse.extra_slice_token(test_case_fneg, "fneg")
     assert gs != None
@@ -370,7 +376,15 @@ def test_regex_sample():
     assert gs != None
     assert gs["ty"] == "i32"
     assert gs["value"] == "3"
+    assert gs["ptr_ty"] == "ptr"
     assert gs["pointer"] == "%ptr"
+
+    gs = parse.extra_slice_token(test_case_store_float, "store")
+    assert gs != None
+    assert gs["ty"] == "double"
+    assert gs["value"] == "%7"
+    assert gs["ptr_ty"] == "double*"
+    assert gs["pointer"] == "%5"
 
     gs = parse.extra_slice_token(test_case_alloca, "alloca")
     assert gs != None
@@ -402,6 +416,21 @@ def test_regex_sample():
     assert gs != None
     assert gs["ty"] == "<4 x i32>"
     assert gs["function"] == "@llvm.smax.v4i32(<4 x i32> %a, <4 x i32> %b)"
+
+    gs = parse.extra_slice_token(test_case_getelementptr, "getelementptr")
+    assert len(gs.group()) == 0
+
+    gs = parse.extra_slice_token(test_case_insertvalue, "insertvalue")
+    assert gs != None
+    assert gs["type"] == "{i32, float}"
+    assert gs["op_val"] == "undef"
+    assert gs["idx"] == "i32 1, 0"
+
+    gs = parse.extra_slice_token(test_case_extractvalue, "extractvalue")
+    assert gs != None
+    assert gs["type"] == "{i32, float}"
+    assert gs["op_val"] == "%agg"
+    assert gs["idx"] == "0"
 
 
 def test_get_smt_vector():
@@ -526,7 +555,7 @@ def test_is_vector_type_basedon_dict_token():
         "v2": "%v2",
         "v3": "< i32 0, i32 4, i32 1, i32 5>",
     }
-    assert parse.is_vectortype_basedon_dict_token(X) == False
+    assert parse.is_vectortype_basedon_dict_token(X, "", "") == False
 
 
 def test_parse_instr_llvm_abs():
@@ -579,6 +608,13 @@ def test_parse_instr_shufflevector():
     )
     parse.parse_instr_shufflevector(instr_1, smt, data_token)
     parse.parse_instr(instr_2, "shufflevector", smt)
+    # smt.dump()
+
+
+def test_whole_proccess_1():
+    smt = st.VerificationInfo()
+    instr_types = parse.generate_instr_types(test_case_float)
+    parse.parse_instrs(test_case_float, instr_types, smt)
     smt.dump()
 
 
@@ -604,3 +640,4 @@ if __name__ == "__main__":
     test_parse_instr_vector()
     test_parse_vector_int()
     test_parse_instr_call()
+    test_whole_proccess_1()
