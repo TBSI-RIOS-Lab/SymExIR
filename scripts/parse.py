@@ -7,161 +7,7 @@ import regex as re
 import structure as st
 import z3
 import z3Extension as z3e
-
-CARE_OPCODE = {
-    "ret",
-    "br",
-    "switch",
-    "indirectbr",
-    "invoke",
-    "callbr",
-    "resume",
-    "catchswitch",
-    "catchret",
-    "cleanupret",
-    "unreachable",
-    "fneg",
-    "add",
-    "fadd",
-    "sub",
-    "fsub",
-    "mul",
-    "fmul",
-    "udiv",
-    "sdiv",
-    "fdiv",
-    "urem",
-    "srem",
-    "frem",
-    "shl",
-    "lshr",
-    "ashr",
-    "and",
-    "or",
-    "xor",
-    "extractelement",
-    "insertelement",
-    "shufflevector",
-    "insertvalue",
-    "extractvalue",
-    "alloca",
-    "load",
-    "store",
-    "fence",
-    "cmpxchg",
-    "atomicrmw",
-    "getelementptr",
-    "trunc",
-    "zext",
-    "sext",
-    "fptrunc",
-    "fpext",
-    "fptoui",
-    "fptosi",
-    "uitofp",
-    "sitofp",
-    "ptrtoint",
-    "inttoptr",
-    "bitcast",
-    "addrspacecast",
-    "icmp",
-    "fcmp",
-    "phi",
-    "select",
-    "freeze",
-    "call",
-    "va_arg",
-    "landingpad",
-    "catchpad",
-    "cleanuppad",
-}
-
-NO_RETURN = {"store"}
-
-terminator_instr_group = {
-    "ret",
-    "br",
-    "switch",
-    "indirectbr",
-    "invoke",
-    "callbr",
-    "resume",
-    "catchswitch",
-    "catchret",
-    "cleanupret",
-    "unreachable",
-}
-
-regular_group: Set = {"add", "sub", "mul", "shl"}
-flaot_group: Set = {"fdiv", "fmul", "fsub", "fadd", "frem"}
-extact_flag_group: Set = {"udiv", "sdiv", "lshr", "ashr"}
-type_twoop_orv_group: Set = {"urem", "srem", "and", "or", "xor"}
-unary_flaot_operators = {"fneg"}
-extractelement_type = {"extractelement"}
-insertelement_type = {"insertelement"}
-shufflevector_type = {"shufflevector"}
-conversion_operations_group = {
-    "trunc",
-    "zext",
-    "sext",
-    "fptrunc",
-    "fpext",
-    "fptoui",
-    "fptosi",
-    "uitofp",
-    "sitofp",
-    "inttoptr",  # TODO: The "inttoptr" and "addrspacecast" need check!
-    "bitcast",
-    "ptrtoint",
-}
-
-""""
-    Only support the most basic edtion just like:
-    <result> = extractvalue {i32, float} %agg, 0
-    %agg1 = insertvalue {i32, float} undef, i32 1, 0
-"""
-extractvalue_group = {"extractvalue"}
-insertvalue_group = {"insertvalue"}
-icmp_group = {"icmp"}
-fcmp_group = {"fcmp"}
-select_type = {"select"}
-over_bb_type = {
-    "freeze",
-    "phi",
-    "va_arg",
-    "landingpad",
-    "catchpad",
-    "cleanuppad",
-}  # TODO: add description of getelementptr in document
-
-simple_atomic_group = {"fence"}
-memory_group = {"cmpxchg", "atomicrmw", "addrspacecast"}
-store_type = {
-    "store"
-}  # Actually for now the "store" is meaningless for the whole program, but we still finish that.
-alloca_type = {"alloca"}
-load_type = {"load"}
-call_type = {"call"}
-getelementptr_type = {"getelementptr"}
-llvm_instr = {"llvm.minnum"}
-
-
-ptr_instr = {"ptrtoint", "bitcast", "inttoptr"}
-
-regex_fast_math_flag = "(nnan |ninf |nsz |arcp |contract |afn |reassoc |fast )"
-regex_type_two_op_orv = (
-    "(?P<type><.*x.*>|.*?) (?P<firstop><.*,.*>|.*?), (?P<secondop><.*,.*>|.*?)"
-)
-regex_nuw_nsw = "(nuw |nsw )"
-regex_exact = "(exact )"
-regex_type_secondop_nov = "(?P<ty1>.*?) (?P<op1>.*?)"
-regex_vscale_n_t = "<((?P<vs>.*?) x ){0,1}(?P<n>.*?) x (?P<ty>.*?)> (?P<val>.*?)"
-regex_vscale_n_ty = "<((?P<vs>.*?) x ){0,1}(?P<n>.*?) x (?P<ty>.*?)>"
-regex_tmp = ".*"
-regex_cconv_flag = "(fastcc |ccc |coldcc |cc 10 |cc 11 |webkit_jscc |anyregcc |preserve_mostcc |cxx_fast_tlscc |tailcc |swiftcc |swifttailcc |cfguard_checkcc |cc <.*>)"
-# NOTE: The poison value is ignored.
-
-vec_ty_example = "<1 x i32>"
+from util import *
 
 
 class SliceToken:
@@ -239,210 +85,6 @@ def parse_ll(ll_moudle: llvm.ModuleRef):
     for function in ll_moudle.functions:
         pass  # TODO: unfinished part which need check the plan once more!
     pass
-
-
-def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
-    pattern = None
-    if instr_type in terminator_instr_group:
-        pattern = re.compile("")  # Return empty dict.
-    elif instr_type in regular_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + regex_nuw_nsw
-            + "{0,2}"
-            + regex_type_two_op_orv
-            + "$"
-        )
-
-    elif instr_type in flaot_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + regex_fast_math_flag
-            + "{0,8}"
-            + regex_type_two_op_orv
-            + "$"
-        )
-
-    elif instr_type in extact_flag_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + regex_exact  # TODO: The keyword exact is not in our consideration.
-            + "{0,1}"
-            + regex_type_two_op_orv
-            + "$"
-        )
-
-    elif instr_type in type_twoop_orv_group:
-        pattern = re.compile("^" + instr_type + " " + regex_type_two_op_orv + "$")
-
-    elif instr_type in unary_flaot_operators:
-        pattern = re.compile(
-            "^" + instr_type + " " + "(?P<type><.*x.*>|.*?) (?P<op1>.*?)$"
-        )
-
-    elif instr_type in extractelement_type:
-        pattern = re.compile(
-            "^extractelement " + regex_vscale_n_t + ", " + regex_type_secondop_nov + "$"
-        )
-
-    elif instr_type in insertelement_type:
-        pattern = re.compile(
-            "^insertelement "
-            + regex_vscale_n_t
-            + ", (?P<ty1>.*?) (?P<elt>.*?), (?P<ty2>.*?) (?P<idx>.*?)"
-            + "$"
-        )
-    elif instr_type in shufflevector_type:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "<((?P<v1_vs>.*?) x ){0,1}(?P<v1_n>.*?) x (?P<v1_ty>.*?)>"
-            + " (?P<v1>.*?), "
-            + "<((?P<v2_vs>.*?) x ){0,1}(?P<v2_n>.*?) x (?P<v2_ty>.*?)>"
-            + " (?P<v2>.*?), "
-            + "<((?P<mask_vs>.*?) x ){0,1}(?P<mask_n>.*?) x (.*?)>"
-            + " (?P<v3>.*?)$"
-        )
-    elif instr_type in conversion_operations_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(?P<ty1><.*x.*>|.*?) (?P<val>.*?)"
-            + " to "
-            + "(?P<ty2><.*x.*>|.*?)$"
-        )
-
-    elif instr_type in extractvalue_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(?P<type>\{.*?\}) "
-            + "(?P<op_val>.*?), "
-            + "(?P<idx>.*?)"
-            + "$"
-        )
-
-    elif instr_type in insertvalue_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(?P<type>\{.*?\}) "
-            + "(?P<op_val>.*?), "
-            + "(?P<idx>.*?)"
-            + "$"
-        )
-
-    elif instr_type in getelementptr_type:
-        pattern = re.compile("")
-
-    elif instr_type in icmp_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(?P<cond>.*?) (?P<ty><.*x.*>|.*?) (?P<op1><.*>|.*?), (?P<op2><.*>|.*?)$"
-        )
-
-    elif instr_type in fcmp_group:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + regex_fast_math_flag
-            + "{0,8}"
-            + "(?P<cond>.*?) (?P<ty><.*x.*>|.*?) (?P<op1><.*>|.*?), (?P<op2><.*>|.*?)$"
-        )
-
-    elif instr_type in select_type:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + regex_fast_math_flag
-            + "{0,8}"
-            + "(?P<selty><.*x.*>|.*?) "
-            + "(?P<cond>.*?), (?P<ty><.*x.*>|.*?) (?P<op1><.*>|.*?), (?P<ty><.*x.*>|.*?) (?P<op2><.*>|.*?)$"
-        )
-
-    elif instr_type in simple_atomic_group:
-        pattern = re.compile("")
-
-    elif instr_type in memory_group:
-        pattern = re.compile("")
-
-    elif instr_type in store_type:
-        # The type of the <pointer> operand must be a pointer to the first class type of the <value> operand
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(atomic ){0,1}"
-            + "(volatile ){0,1}"
-            + "(?P<ty><.*x.*>|.*?) "
-            + "(?P<value><.*x.*>|.*?), (?P<ptr_ty><.*x.*>\*|.*?) "
-            + "(?P<pointer>.*?)"
-            + "(,.*?){0,1}$"
-        )
-
-    elif instr_type in alloca_type:
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(inalloca ){0,1}"
-            + "(?P<ty><.*x.*>|.*?)"
-            + "(,.*?){0,1}"
-            + "(align (?P<align>.*)){0,1}$"
-        )
-
-    elif instr_type in load_type:
-        "example: 'ty: i32'"
-        pattern = re.compile(
-            "^"
-            + instr_type
-            + " "
-            + "(atomic ){0,1}"
-            + "(volatile ){0,1}"
-            + "(?P<ty><.*>|.*?)"
-            + ",.*$"
-        )
-    elif instr_type in call_type:
-        "exampl:  call i8 @llvm.smax.i8(i8 42, i8 -24)"
-        "The non llvm function is not in our consideration."
-        if opt.contains(token_ex, "llvm"):
-            pattern = re.compile(
-                "^"
-                + "(tail | musttail | notail ){0,1}"
-                + "call"
-                + regex_fast_math_flag
-                + "{0,8}"
-                + regex_cconv_flag
-                + "{0,1}"
-                + "(zeroext |signext |inreg )"
-                + "{0,1}"
-                + " (?P<ty><.*>|.*?) "
-                + "(?P<function>@.*)"
-                + ".*$"
-            )
-        else:
-            pattern = re.compile("")
-
-    if pattern != None:
-        gs = re.search(
-            pattern,
-            token_ex,
-        )
-        return gs
 
 
 Name2Type = {
@@ -576,7 +218,9 @@ def is_simple_type(var_type) -> bool:
     return False
 
 
-def parse_instr_load(value_name: str, data_token: Dict, smt_block: st.VerificationInfo):
+def parse_instr_load(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
     if data_token == None or "ty" not in data_token.keys():
         raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
 
@@ -591,7 +235,7 @@ def parse_instr_load(value_name: str, data_token: Dict, smt_block: st.Verificati
 
 
 def parse_instr_getelementptr(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     if data_token != None and len(data_token):
         raise RuntimeError("The data_token for getelementptr should be empty.\n")
@@ -680,7 +324,7 @@ def get_nn_basedOn_type(
         return res
 
 
-def get_value_from_smt(one: str, smt_block: st.VerificationInfo):
+def get_value_from_smt(one: str, smt_block: st.VerificationContext):
     if one.startswith("%"):
         value = smt_block.find_value_by_name(one)
     else:
@@ -688,7 +332,7 @@ def get_value_from_smt(one: str, smt_block: st.VerificationInfo):
     return value
 
 
-def get_single_value(one: str, smt_block: st.VerificationInfo, value_type: str):
+def get_single_value(one: str, smt_block: st.VerificationContext, value_type: str):
     value_vec_type = is_vec_type(value_type)
     if one.startswith("%"):
         return get_value_from_smt(one, smt_block)
@@ -697,7 +341,7 @@ def get_single_value(one: str, smt_block: st.VerificationInfo, value_type: str):
 
 
 def get_two_value(
-    first: str, second: str, smt_block: st.VerificationInfo, value_type: str
+    first: str, second: str, smt_block: st.VerificationContext, value_type: str
 ):
     a = get_single_value(first, smt_block, value_type)
 
@@ -706,7 +350,7 @@ def get_two_value(
 
 
 def get_ready_two_value_basic(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     if smt_block.is_there_same_value(value_name):
         raise ValueError(
@@ -738,7 +382,7 @@ def is_same_z3_vector_type(var1, var2):
 def parse_instr_two_op_function(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     z3_function_two_op,
 ):
     first, second = get_ready_two_value_basic(value_name, data_token, smt_block)
@@ -748,25 +392,25 @@ def parse_instr_two_op_function(
 
 
 def parse_instr_add(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecAdd)
 
 
 def parse_instr_sub(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecSub)
 
 
 def parse_instr_mul(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecMul)
 
 
 def parse_instr_shl(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecShl)
 
@@ -805,7 +449,7 @@ def get_icmp_result(first_value, second_value, cond: str):
 
 # Have not taken "ptr" into c
 def parse_instr_icmp(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     cond, ty, op1, op2 = (
         data_token["cond"],
@@ -868,7 +512,7 @@ def get_fcmp_result(first_value, second_value, cond: str):
 
 
 def parse_instr_fcmp(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     ordered_group = {"oeq", "ogt", "oge", "olt", "ole", "one", "ord"}
     unordered_group = {"ueq", "ugt", "uge", "ult", "ule", "une", "uno"}
@@ -885,31 +529,31 @@ def parse_instr_fcmp(
 
 
 def parse_instr_fmul(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.fpMul_RNE)
 
 
 def parse_instr_fadd(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.fpAdd_RNE)
 
 
 def parse_instr_fsub(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.fpSub_RNE)
 
 
 def parse_instr_fdiv(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.fpDiv_RNE)
 
 
 def parse_instr_fneg(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     op = data_token["op1"]
     var_type = data_token["type"]
@@ -920,67 +564,67 @@ def parse_instr_fneg(
 
 
 def parse_instr_frem(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3.fpRem)
 
 
 def parse_instr_udiv(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3.UDiv)
 
 
 def parse_instr_sdiv(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecSdiv)
 
 
 def parse_instr_urem(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3.URem)
 
 
 def parse_instr_srem(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3.SRem)
 
 
 def parse_instr_and(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecAnd)
 
 
 def parse_instr_or(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecOr)
 
 
 def parse_instr_xor(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecXor)
 
 
 def parse_instr_lshr(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3.LShR)
 
 
 def parse_instr_ashr(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function(value_name, data_token, smt_block, z3e.BitVecAshr)
 
 
 def parse_instr_trunc(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
@@ -1001,7 +645,7 @@ def get_ext_smt_result(value, ty1: str, ty2: str, z3_function):
 
 
 def parse_instr_zext(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
     value = get_single_value(val, smt_block, ty1)
@@ -1010,7 +654,7 @@ def parse_instr_zext(
 
 
 def parse_instr_sext(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
     value = get_single_value(val, smt_block, ty1)
@@ -1021,7 +665,7 @@ def parse_instr_sext(
 def parse_instr_conversion(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     z3_function_conversion,
 ):
     ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
@@ -1034,7 +678,7 @@ def parse_instr_conversion(
 def parse_instr_fptrunc(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
 ):
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
@@ -1046,7 +690,7 @@ def parse_instr_fptrunc(
 def parse_instr_fpext(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
 ):
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
@@ -1056,7 +700,7 @@ def parse_instr_fpext(
 
 
 def parse_instr_fptoui(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     # The ‘fptoui’ instruction converts its floating-point operand into the nearest
     # (rounding towards zero) unsigned integer value. If the value cannot fit in ty2,
@@ -1065,7 +709,7 @@ def parse_instr_fptoui(
 
 
 def parse_instr_fptosi(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     # The ‘fptoui’ instruction converts its floating-point operand into the nearest
     # (rounding towards zero) unsigned integer value. If the value cannot fit in ty2,
@@ -1075,13 +719,13 @@ def parse_instr_fptosi(
 
 
 def parse_instr_uitofp(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_conversion(value_name, data_token, smt_block, z3e.fpUnsignedToFP_RNE)
 
 
 def parse_instr_sitofp(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_conversion(value_name, data_token, smt_block, z3e.fpSignedToFP_RNE)
 
@@ -1186,7 +830,7 @@ def get_llvm_compare_result(first, second, func):
 
 
 def parse_instr_llvm_comp(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo, func
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext, func
 ):
     argus = separate_argument(argments)
     assert len(argus) == 2
@@ -1199,44 +843,44 @@ def parse_instr_llvm_comp(
 
 
 def parse_instr_llvm_umax(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_comp(value_name, argments, rs_ty, smt_block, get_umax)
 
 
 def parse_instr_llvm_umin(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_comp(value_name, argments, rs_ty, smt_block, get_umin)
 
 
 # TODO: plz check if the smax, umax... just have two arguments once time.
 def parse_instr_llvm_smax(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_comp(value_name, argments, rs_ty, smt_block, get_smax)
 
 
 def parse_instr_llvm_smin(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_comp(value_name, argments, rs_ty, smt_block, get_smin)
 
 
 def parse_instr_llvm_minnum(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_comp(value_name, argments, rs_ty, smt_block, z3.fpMin)
 
 
 def parse_instr_llvm_maxnum(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_comp(value_name, argments, rs_ty, smt_block, z3.fpMax)
 
 
 def parse_instr_llvm_minimum(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     argus = separate_argument(argments)
     assert len(argus) == 2
@@ -1257,7 +901,7 @@ def parse_instr_llvm_minimum(
 
 
 def parse_instr_llvm_maximum(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     argus = separate_argument(argments)
     assert len(argus) == 2
@@ -1309,7 +953,7 @@ def get_sqrt_result(val):
 
 
 def parse_instr_llvm_single_argument(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo, func
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext, func
 ):
     argus = separate_argument(argments)
     assert len(argus) == 1
@@ -1320,7 +964,7 @@ def parse_instr_llvm_single_argument(
 
 
 def parse_instr_llvm_abs(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_single_argument(
         value_name, argments, rs_ty, smt_block, get_abs_result
@@ -1328,7 +972,7 @@ def parse_instr_llvm_abs(
 
 
 def parse_instr_llvm_fpabs(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_single_argument(
         value_name, argments, rs_ty, smt_block, get_fpabs_result
@@ -1346,7 +990,7 @@ def get_fpma_result(first, second, third):
 
 
 def parse_instr_llvm_fma(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     argus = separate_argument(argments)
     assert len(argus) == 3
@@ -1361,7 +1005,7 @@ def parse_instr_llvm_fma(
 
 
 def parse_instr_llvm_sqrt(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_single_argument(
         value_name, argments, rs_ty, smt_block, get_sqrt_result
@@ -1369,7 +1013,7 @@ def parse_instr_llvm_sqrt(
 
 
 def parse_instr_llvm_llrint(
-    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationInfo
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_single_argument(
         value_name, argments, rs_ty, smt_block, get_sqrt_result
@@ -1434,7 +1078,7 @@ def get_right_key(function_str: str):
 def parse_instr_call(
     instr: str,
     instr_type: str,
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     instr_infoDict: Dict | None = None,
 ):
     """"""
@@ -1488,7 +1132,7 @@ instr_function_simple_dict = {
 
 # TODO: add vscale.
 def parse_instr_shufflevector(
-    instr: str, smt_block: st.VerificationInfo, data_token: Dict[str, str] | None
+    instr: str, smt_block: st.VerificationContext, data_token: Dict[str, str] | None
 ):
     def extra_loc_from_mask(mask: str):
         res_list = mask.strip("<").strip(">").strip(" ").split(",")
@@ -1533,7 +1177,7 @@ instr_function_vector_type_dict = {"shufflevector"}
 def parse_instr_two_op_function_v(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     z3_function_two_op,
 ):
     first, second = get_ready_two_value_basic(value_name, data_token, smt_block)
@@ -1548,91 +1192,91 @@ def parse_instr_two_op_function_v(
 
 
 def parse_instr_add_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecAdd)
 
 
 def parse_instr_fadd_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.fpAdd_RNE)
 
 
 def parse_instr_sub_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecSub)
 
 
 def parse_instr_mul_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecMul)
 
 
 def parse_instr_shl_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecShl)
 
 
 def parse_instr_udiv_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3.UDiv)
 
 
 def parse_instr_sdiv_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecSdiv)
 
 
 def parse_instr_urem_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3.URem)
 
 
 def parse_instr_srem_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3.SRem)
 
 
 def parse_instr_and_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecAnd)
 
 
 def parse_instr_or_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecOr)
 
 
 def parse_instr_xor_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecXor)
 
 
 def parse_instr_lshr_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3.LShR)
 
 
 def parse_instr_ashr_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.BitVecAshr)
 
 
 def parse_instr_icmp_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     cond, ty, op1, op2 = (
         data_token["cond"],
@@ -1652,31 +1296,31 @@ def parse_instr_icmp_vec(
 
 
 def parse_instr_fmul_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.fpMul_RNE)
 
 
 def parse_instr_frem_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3.fpRem)
 
 
 def parse_instr_fsub_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3e.fpSub_RNE)
 
 
 def parse_instr_fdiv_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     parse_instr_two_op_function_v(value_name, data_token, smt_block, z3.fpDiv)
 
 
 def parse_instr_fneg_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     op = data_token["op1"]
     var_type = data_token["type"]
@@ -1688,7 +1332,7 @@ def parse_instr_fneg_vec(
 
 
 def parse_instr_fcmp_vec(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     ordered_group = {"oeq", "ogt", "oge", "olt", "ole", "one", "ord"}
     unordered_group = {"ueq", "ugt", "uge", "ult", "ule", "une", "uno"}
@@ -1710,7 +1354,7 @@ def parse_instr_fcmp_vec(
 
 
 def parse_instr_trunc_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
@@ -1729,7 +1373,7 @@ def parse_instr_trunc_vec(
 
 
 def parse_instr_zext_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
     assert is_vec_type(ty1) and is_vec_type(ty2)
@@ -1746,7 +1390,7 @@ def parse_instr_zext_vec(
 
 
 def parse_instr_sext_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
     assert is_vec_type(ty1) and is_vec_type(ty2)
@@ -1765,7 +1409,7 @@ def parse_instr_sext_vec(
 def parse_instr_conversion_vec(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     z3_function_conversion,
 ):
     ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
@@ -1785,7 +1429,7 @@ def parse_instr_conversion_vec(
 def parse_instr_fptrunc_vec(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
 ):
     "Use z3.fpFPToFP to conversion"
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpFPToFP_RNE)
@@ -1794,20 +1438,20 @@ def parse_instr_fptrunc_vec(
 def parse_instr_fpext_vec(
     value_name: str,
     data_token: Dict[str, str],
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
 ):
     "Use z3.fpFPToFP to conversion"
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpFPToFP_RNE)
 
 
 def parse_instr_fptoui_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpToUBV_RTZ)
 
 
 def parse_instr_fptosi_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     # The ‘fptoui’ instruction converts its floating-point operand into the nearest
     # (rounding towards zero) unsigned integer value. If the value cannot fit in ty2,
@@ -1817,7 +1461,7 @@ def parse_instr_fptosi_vec(
 
 
 def parse_instr_uitofp_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_conversion_vec(
         value_name, data_token, smt_block, z3e.fpUnsignedToFP_RNE
@@ -1825,7 +1469,7 @@ def parse_instr_uitofp_vec(
 
 
 def parse_instr_sitofp_vec(
-    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpSignedToFP_RNE)
 
@@ -1867,6 +1511,14 @@ instr_function_vector_dict = {
 
 def is_no_return_instr(instr_type: str):
     return True if instr_type == "store" else False
+
+
+def is_aggregate_operations(instr_type: str):
+    return (
+        True
+        if instr_type in extractvalue_type or instr_type in insertvalue_type
+        else False
+    )
 
 
 def parse_instr_no_return():
@@ -1917,20 +1569,81 @@ def is_vectortype_basedon_dict_token(token: Dict, instr, instr_type):
         )
 
 
-def get_instr_dict(instr: str, instr_type: str):
-    slice = instr.strip()
-    if instr_type not in NO_RETURN:
-        slice = re.split("=", slice)[1].strip(" ")
-    slice_token_math = extra_slice_token(slice, instr_type)
-    if slice_token_math == None:
-        raise RuntimeError("The instr({}) dict token is None!".format(instr))
-    return slice_token_math.groupdict()
+def parse_instr_extractvalue(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
+    if data_token == None or "type" not in data_token.keys():
+        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+
+    type_list = data_token["type"].strip(" ").strip("{").strip("}").split(",")
+    type_list = [type_list[i].strip(" ") for i in range(len(type_list))]
+
+    idx = data_token["idx"]
+    if is_number(idx):
+        idx = int(data_token["idx"])
+    else:
+        raise RuntimeError("The idx is not what we expected.")
+
+    if idx > len(type_list):
+        raise OverflowError("")
+
+    type_extra = type_list[idx]
+    if not smt_block.is_there_same_value(value_name):
+        if is_simple_type(type_extra):
+            value = get_basic_smt_value(value_name, type_extra)
+            smt_block.add_new_value(value_name, value, type_extra)
+        elif is_vec_type(type_extra):
+            value = get_smt_vector(value_name, type_extra)
+            smt_block.add_new_value(value_name, value, type_extra)
+    else:
+        raise RuntimeError(
+            "There is already a same value({}) in smt!".format(value_name)
+        )
+
+
+class aggregate_type:
+    def __init__(self) -> None:
+        pass
+
+    def __str__(self) -> str:
+        return "aggregate_type do nothing...."
+
+
+def parse_instr_insertvalue(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
+    if data_token == None or "type" not in data_token.keys():
+        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+    value = aggregate_type()
+    smt_block.add_new_value(value_name, value, "aggregate_type")
+
+
+instr_function_aggregate_operations = {
+    "extractvalue": parse_instr_extractvalue,
+    "insertvalue": parse_instr_insertvalue,
+}
+
+
+def parse_instr_aggregate_operations(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationContext,
+    instr_infoDict: Dict | None = None,
+):
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    if instr_infoDict == None:
+        instr_infoDict = get_instr_dict(instr, instr_type)
+    if instr_type in instr_function_aggregate_operations.keys():
+        instr_function_aggregate_operations[instr_type](name, instr_infoDict, smt_block)
+    else:
+        raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
 
 
 def parse_instr_basic(
     instr: str,
     instr_type: str,
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     instr_infoDict: Dict | None = None,
 ):
     instr = instr.strip()
@@ -1946,7 +1659,7 @@ def parse_instr_basic(
 def parse_instr_vector(
     instr: str,
     instr_type: str,
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     instr_infoDict: Dict | None = None,
 ):
     instr = instr.strip()
@@ -1960,14 +1673,22 @@ def parse_instr_vector(
 
 
 # TODO: add filter.
-def parse_instr(instr: str, instr_type: str, smt_block: st.VerificationInfo):
-    instr_info_dict = get_instr_dict(instr, instr_type)
+def parse_instr(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationContext,
+    instr_info_dict: Dict = None,
+):
+    if instr_info_dict == None:
+        instr_info_dict = get_instr_dict(instr, instr_type)
     if is_no_return_instr(instr_type):
         parse_instr_no_return()
     elif is_vectortype_instr(instr_type):
         parse_instr_shufflevector(instr, smt_block, instr_info_dict)
-    elif is_call_instr(instr):
+    elif is_call_instr(instr_type):
         parse_instr_call(instr, instr_type, smt_block, instr_info_dict)
+    elif is_aggregate_operations(instr_type):
+        parse_instr_aggregate_operations(instr, instr_type, smt_block, instr_info_dict)
     else:
         if not is_vectortype_basedon_dict_token(instr_info_dict, instr, instr_type):
             parse_instr_basic(instr, instr_type, smt_block, instr_info_dict)
@@ -1975,25 +1696,8 @@ def parse_instr(instr: str, instr_type: str, smt_block: st.VerificationInfo):
             parse_instr_vector(instr, instr_type, smt_block)
 
 
-def generate_instr_types(instrs: List[str]) -> List[str]:
-    instr_types = []
-    for line in instrs:
-        find_flag = False
-        for word in re.split(" ", line):
-            if word in CARE_OPCODE:
-                instr_types.append(word)
-                find_flag = True
-                break
-        if find_flag == False:
-            raise st.NotImplementedError(
-                "Can't find the type for this instr: {}.".format(line)
-            )
-
-    return instr_types
-
-
 def parse_instrs(
-    instrs: List[str], instr_types: List[str], smt_block: st.VerificationInfo
+    instrs: List[str], instr_types: List[str], smt_block: st.VerificationContext
 ):
     if len(instr_types) != len(instrs):
         instr_types = generate_instr_types(instrs)

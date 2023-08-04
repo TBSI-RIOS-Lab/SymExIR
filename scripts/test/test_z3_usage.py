@@ -29,6 +29,18 @@ def test_list_z3_1():
     print(type(l[0]))
 
 
+def test_z3_reset():
+    l: list = []
+    l.append(z3.BitVecVal(10, 32))
+    l.append(z3.BitVecVal(10, 32))
+    l.append(l[0] + l[1])
+    solver = z3.Solver()
+    solver.add(l[2] == 20)
+    assert solver.check() == z3.sat
+    print(solver.model())
+
+
 if __name__ == "__main__":
-    test_list_z3()
-    test_list_z3_1()
+    # test_list_z3()
+    # test_list_z3_1()
+    test_z3_reset()

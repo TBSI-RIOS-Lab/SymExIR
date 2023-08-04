@@ -461,7 +461,7 @@ def test_get_type_precision():
 
 
 def test_parse_float():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     parse.parse_instr_basic(test_case_float_simple[0], "load", smt)
     parse.parse_instr_basic(test_case_float_simple[1], "load", smt)
     parse.parse_instr_basic(test_case_float_simple[2], "fadd", smt)
@@ -479,7 +479,7 @@ def test_parse_float():
 
 
 def test_parse_int():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     parse.parse_instr_basic(test_case_int_simple[0], "load", smt)
     parse.parse_instr_basic(test_case_int_simple[1], "load", smt)
     parse.parse_instr_basic(test_case_int_simple[2], "add", smt)
@@ -499,7 +499,7 @@ def test_parse_int():
 
 
 def test_parse_vector_int():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     parse.parse_instr(test_case_int_vector[0], "load", smt)
     parse.parse_instr(test_case_int_vector[1], "load", smt)
     parse.parse_instr(test_case_int_vector[2], "add", smt)
@@ -559,19 +559,19 @@ def test_is_vector_type_basedon_dict_token():
 
 
 def test_parse_instr_llvm_abs():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     parse.parse_instr_llvm_abs("%1", "<2 x i32> < i32 1, i32 1>", "<2 x i32>", smt)
     parse.parse_instr_llvm_abs("%2", "i32 1", "2", smt)
     # smt.dump()
 
 
 def test_get_ready_two_value_v():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     res, _ = parse.get_two_value("< i32 1, i32 1>", "< i32 1, i32 1>", smt, "<2 x i32>")
 
 
 def test_parse_instr_two_op_function_v():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     dict = {
         "firstop": "< i32 1, i32 1>",
         "secondop": "< i32 1, i32 1>",
@@ -582,7 +582,7 @@ def test_parse_instr_two_op_function_v():
 
 
 def test_parse_instr_vector():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     test_case_vector_float = [
         "%1 = fadd <2 x float> < float 1.0, float 1.0>, < float 1.0, float 1.0>",
     ]
@@ -590,7 +590,7 @@ def test_parse_instr_vector():
 
 
 def test_parse_instr_call():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     parse.parse_instr_call("%1 = call i8 @llvm.smax.i8(i8 42, i8 -24)", "call", smt)
     parse.parse_instr_call("%2 = call i8 @llvm.smin.i8(i8 42, i8 -24)", "call", smt)
     parse.parse_instr_call("%3 = call i8 @llvm.umax.i8(i8 42, i8 -24)", "call", smt)
@@ -599,7 +599,7 @@ def test_parse_instr_call():
 
 
 def test_parse_instr_shufflevector():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     instr_1 = "%1 = shufflevector <2 x i32> < i32 1, i32 2>, <2 x i32> < i32 3, i32 4>, <3 x i32> <i32 0, i32 1, i32 2>"
     instr_2 = "%2 = shufflevector <2 x i32> < i32 1, i32 2>, <2 x i32> < i32 3, i32 4>, <3 x i32> <i32 3, i32 1, i32 2>"
     data_token = parse.get_instr_dict(
@@ -611,11 +611,22 @@ def test_parse_instr_shufflevector():
     # smt.dump()
 
 
+def test_parse_aggregate_operations():
+    smt = st.VerificationContext()
+    instr_1 = "%1 = extractvalue {i32, float} %agg, 0"
+    instr_2 = "%agg1 = insertvalue {i32, float} undef, i32 1, 0"
+    instr_3 = "%agg2 = insertvalue {i32, float} %agg1, float %val, 1 "
+    parse.parse_instr(instr_1, "extractvalue", smt)
+    parse.parse_instr(instr_2, "insertvalue", smt)
+    parse.parse_instr(instr_3, "insertvalue", smt)
+    smt.dump_with_type()
+
+
 def test_whole_proccess_1():
-    smt = st.VerificationInfo()
+    smt = st.VerificationContext()
     instr_types = parse.generate_instr_types(test_case_float)
     parse.parse_instrs(test_case_float, instr_types, smt)
-    smt.dump()
+    # smt.dump()
 
 
 if __name__ == "__main__":
@@ -635,6 +646,7 @@ if __name__ == "__main__":
     test_get_ready_two_value_v()
     test_get_smt_vector()
     test_parse_instr_shufflevector()
+    test_parse_aggregate_operations()
     test_get_nn_basedOn_type_v()
     test_parse_instr_two_op_function_v()
     test_parse_instr_vector()
