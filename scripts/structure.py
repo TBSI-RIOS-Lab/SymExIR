@@ -142,6 +142,11 @@ class VerificationInfo:
             loc = self.var2list[key]
             print(str(self.smt_list[loc]))
 
+    def dump_with_type(self):
+        for key in self.var2list.keys():
+            loc = self.var2list[key]
+            print(str(self.smt_list[loc]), self.var2type[key])
+
 
 class VectorTypeInfo:
     def __init__(self, size: int, type: str) -> None:

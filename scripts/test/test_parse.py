@@ -611,11 +611,22 @@ def test_parse_instr_shufflevector():
     # smt.dump()
 
 
+def test_parse_aggregate_operations():
+    smt = st.VerificationInfo()
+    instr_1 = "%1 = extractvalue {i32, float} %agg, 0"
+    instr_2 = "%agg1 = insertvalue {i32, float} undef, i32 1, 0"
+    instr_3 = "%agg2 = insertvalue {i32, float} %agg1, float %val, 1 "
+    parse.parse_instr(instr_1, "extractvalue", smt)
+    parse.parse_instr(instr_2, "insertvalue", smt)
+    parse.parse_instr(instr_3, "insertvalue", smt)
+    smt.dump_with_type()
+
+
 def test_whole_proccess_1():
     smt = st.VerificationInfo()
     instr_types = parse.generate_instr_types(test_case_float)
     parse.parse_instrs(test_case_float, instr_types, smt)
-    smt.dump()
+    # smt.dump()
 
 
 if __name__ == "__main__":
@@ -635,6 +646,7 @@ if __name__ == "__main__":
     test_get_ready_two_value_v()
     test_get_smt_vector()
     test_parse_instr_shufflevector()
+    test_parse_aggregate_operations()
     test_get_nn_basedOn_type_v()
     test_parse_instr_two_op_function_v()
     test_parse_instr_vector()

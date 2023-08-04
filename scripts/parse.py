@@ -120,8 +120,8 @@ conversion_operations_group = {
     <result> = extractvalue {i32, float} %agg, 0
     %agg1 = insertvalue {i32, float} undef, i32 1, 0
 """
-extractvalue_group = {"extractvalue"}
-insertvalue_group = {"insertvalue"}
+extractvalue_type = {"extractvalue"}
+insertvalue_type = {"insertvalue"}
 icmp_group = {"icmp"}
 fcmp_group = {"fcmp"}
 select_type = {"select"}
@@ -320,7 +320,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + "(?P<ty2><.*x.*>|.*?)$"
         )
 
-    elif instr_type in extractvalue_group:
+    elif instr_type in extractvalue_type:
         pattern = re.compile(
             "^"
             + instr_type
@@ -331,7 +331,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + "$"
         )
 
-    elif instr_type in insertvalue_group:
+    elif instr_type in insertvalue_type:
         pattern = re.compile(
             "^"
             + instr_type
@@ -1869,6 +1869,10 @@ def is_no_return_instr(instr_type: str):
     return True if instr_type == "store" else False
 
 
+def is_aggregate_operations(instr_type: str):
+    return True if instr_type in extractvalue_type or instr_type in insertvalue_type else False
+
+
 def parse_instr_no_return():
     pass
 
@@ -1927,6 +1931,77 @@ def get_instr_dict(instr: str, instr_type: str):
     return slice_token_math.groupdict()
 
 
+def parse_instr_extractvalue(
+    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+):
+    if data_token == None or "type" not in data_token.keys():
+        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+
+    type_list = data_token["type"].strip(" ").strip("{").strip("}").split(",")
+    type_list = [type_list[i].strip(" ") for i in range(len(type_list))]
+
+    idx = data_token["idx"]
+    if is_number(idx):
+        idx = int(data_token["idx"])
+    else:
+        raise RuntimeError("The idx is not what we expected.")
+
+    if idx > len(type_list):
+        raise OverflowError("")
+
+    type_extra = type_list[idx]
+    if not smt_block.is_there_same_value(value_name):
+        if is_simple_type(type_extra):
+            value = get_basic_smt_value(value_name, type_extra)
+            smt_block.add_new_value(value_name, value, type_extra)
+        elif is_vec_type(type_extra):
+            value = get_smt_vector(value_name, type_extra)
+            smt_block.add_new_value(value_name, value, type_extra)
+    else:
+        raise RuntimeError(
+            "There is already a same value({}) in smt!".format(value_name)
+        )
+
+
+class aggregate_type:
+    def __init__(self) -> None:
+        pass
+
+    def __str__(self) -> str:
+        return "aggregate_type do nothing...."
+
+
+def parse_instr_insertvalue(
+    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+):
+    if data_token == None or "type" not in data_token.keys():
+        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+    value = aggregate_type()
+    smt_block.add_new_value(value_name, value, "aggregate_type")
+
+
+instr_function_aggregate_operations = {
+    "extractvalue": parse_instr_extractvalue,
+    "insertvalue": parse_instr_insertvalue,
+}
+
+
+def parse_instr_aggregate_operations(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationInfo,
+    instr_infoDict: Dict | None = None,
+):
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    if instr_infoDict == None:
+        instr_infoDict = get_instr_dict(instr, instr_type)
+    if instr_type in instr_function_aggregate_operations.keys():
+        instr_function_aggregate_operations[instr_type](name, instr_infoDict, smt_block)
+    else:
+        raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
+
+
 def parse_instr_basic(
     instr: str,
     instr_type: str,
@@ -1966,8 +2041,10 @@ def parse_instr(instr: str, instr_type: str, smt_block: st.VerificationInfo):
         parse_instr_no_return()
     elif is_vectortype_instr(instr_type):
         parse_instr_shufflevector(instr, smt_block, instr_info_dict)
-    elif is_call_instr(instr):
+    elif is_call_instr(instr_type):
         parse_instr_call(instr, instr_type, smt_block, instr_info_dict)
+    elif is_aggregate_operations(instr_type):
+        parse_instr_aggregate_operations(instr, instr_type, smt_block, instr_info_dict)
     else:
         if not is_vectortype_basedon_dict_token(instr_info_dict, instr, instr_type):
             parse_instr_basic(instr, instr_type, smt_block, instr_info_dict)
