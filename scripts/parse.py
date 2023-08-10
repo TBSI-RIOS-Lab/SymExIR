@@ -1640,6 +1640,77 @@ def parse_instr_aggregate_operations(
         raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
 
 
+def parse_instr_extractvalue(
+    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+):
+    if data_token == None or "type" not in data_token.keys():
+        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+
+    type_list = data_token["type"].strip(" ").strip("{").strip("}").split(",")
+    type_list = [type_list[i].strip(" ") for i in range(len(type_list))]
+
+    idx = data_token["idx"]
+    if is_number(idx):
+        idx = int(data_token["idx"])
+    else:
+        raise RuntimeError("The idx is not what we expected.")
+
+    if idx > len(type_list):
+        raise OverflowError("")
+
+    type_extra = type_list[idx]
+    if not smt_block.is_there_same_value(value_name):
+        if is_simple_type(type_extra):
+            value = get_basic_smt_value(value_name, type_extra)
+            smt_block.add_new_value(value_name, value, type_extra)
+        elif is_vec_type(type_extra):
+            value = get_smt_vector(value_name, type_extra)
+            smt_block.add_new_value(value_name, value, type_extra)
+    else:
+        raise RuntimeError(
+            "There is already a same value({}) in smt!".format(value_name)
+        )
+
+
+class aggregate_type:
+    def __init__(self) -> None:
+        pass
+
+    def __str__(self) -> str:
+        return "aggregate_type do nothing...."
+
+
+def parse_instr_insertvalue(
+    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+):
+    if data_token == None or "type" not in data_token.keys():
+        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+    value = aggregate_type()
+    smt_block.add_new_value(value_name, value, "aggregate_type")
+
+
+instr_function_aggregate_operations = {
+    "extractvalue": parse_instr_extractvalue,
+    "insertvalue": parse_instr_insertvalue,
+}
+
+
+def parse_instr_aggregate_operations(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationInfo,
+    instr_infoDict: Dict | None = None,
+):
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    if instr_infoDict == None:
+        instr_infoDict = get_instr_dict(instr, instr_type)
+    if instr_type in instr_function_aggregate_operations.keys():
+        instr_function_aggregate_operations[instr_type](name, instr_infoDict, smt_block)
+    else:
+        raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
+
+
 def parse_instr_basic(
     instr: str,
     instr_type: str,
