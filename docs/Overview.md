@@ -37,6 +37,18 @@ LLVMSymEx的产生目的是为了在静态环境下，验证BB块维度下的指
 
 ## LLVMSymEx实现方法
 
-由于需要在不真实运行程序的情况下，LLVMSymEx选取符号执行作为最重要的实现方法。通过将LLVM IR转换成相应的符号执行引擎语句。所谓的符号执行引擎在LLVMSymEx中特指约束求解器（Constraint solver），solver能够通过添加约束对数学多个维度（实数，向量，浮点数）的问题进行运算求解，能够承担LLVMSymEx的大部分运算任务。
+由于需要在不真实运行程序的情况下获取指令运行的结果，LLVMSymEx选取符号执行作为最重要的实现方法。通过将LLVM IR转换成相应的符号执行引擎语句。所谓的符号执行引擎在LLVMSymEx中特指约束求解器（Constraint solver），solver能够通过添加约束对数学多个维度（实数，向量，浮点数）的问题进行运算求解，能够承担LLVMSymEx的大部分运算任务。
 
 LLVMSymEx采取的约束求解器为[Z3](https://github.com/Z3Prover/z3)，Z3在被Microsoft提出后，获得广泛应用，其具备几个方面的优点：运算领域广，语言api种类多与运算类型实现广泛。
+
+通过手工对LLVM IR与SMT Solver语句进行匹配，例如IR中常见的`add` operation与Z3求解器中的<code>ADD</code>或`FADD`存在对应关系，可以在合适的条件下进行transfer或者lowering。还有许多其他的例子，如LLVM IR中的`urem`也与`z3.UREM`能起到相似的作用。
+
+在对LLVM IR指令进行转换并存储后，就能对其计算结果进行验证。而在结果验证阶段，LLVMSymEx并不不会保留长线条的计算过程，而是会在对计算结果进行验证后，将LLVM IR计算结果直接替换成应当验证的数值。这样的做法能够充分地利用验证的数据，不只能避免因为过长的计算路径带来的时间负担，同时也可以避免由于长链条的浮点计算引入越来愈大的误差。
+
+### Float Value Tolerance
+
+由于浮点数计算的精确结果会因为浮点数的精度，执行程序的编写与执行计算单元的架构设计而发生变化。LLVMSymEx的计算依赖SMT Solver同样会因为以上的原因而产生波动，这些波动是需要在验证浮点数过程中纳入考虑的。LLVMSymEx为其做出了两点努力，一是，在验证时将允许一定的浮点数误差；二是，在单个value在验证结束后，将其替换成一个固定的数字，阻断过长的计算链条而带来不断越来越大的计算误差。
+
+## Reference
+
+1. https://qemu.readthedocs.io/en/latest/devel/tracing.html

@@ -1,5 +1,6 @@
-import regex as re
 import sys
+
+import regex as re
 
 sys.path.append("..")
 

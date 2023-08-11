@@ -1,6 +1,7 @@
-from typing import Dict, List, Set
-import regex as re
 import operator as opt
+from typing import Dict, List, Set
+
+import regex as re
 
 CARE_OPCODE = {
     "ret",

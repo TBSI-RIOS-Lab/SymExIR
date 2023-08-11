@@ -1,6 +1,7 @@
-from scripts.util import is_assert_instr_type, is_constraint_type
-from structure import *
 import parse as ps
+from structure import *
+
+from scripts.util import is_assert_instr_type, is_constraint_type
 
 NO_RETURN = {"store"}
 
