@@ -1641,7 +1641,7 @@ def parse_instr_aggregate_operations(
 
 
 def parse_instr_extractvalue(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     if data_token == None or "type" not in data_token.keys():
         raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
@@ -1681,7 +1681,7 @@ class aggregate_type:
 
 
 def parse_instr_insertvalue(
-    value_name: str, data_token: Dict, smt_block: st.VerificationInfo
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
     if data_token == None or "type" not in data_token.keys():
         raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
@@ -1698,7 +1698,7 @@ instr_function_aggregate_operations = {
 def parse_instr_aggregate_operations(
     instr: str,
     instr_type: str,
-    smt_block: st.VerificationInfo,
+    smt_block: st.VerificationContext,
     instr_infoDict: Dict | None = None,
 ):
     instr = instr.strip()

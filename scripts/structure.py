@@ -184,6 +184,7 @@ class VerificationContext:
     def add_new_value(self, name: str, value, type):
         if name in self.var2list.keys():
             return
+        
         self.smt_list.append(z3.simplify(value))
         self.var2list[name] = len(self.smt_list) - 1
         self.var2type[name] = type
