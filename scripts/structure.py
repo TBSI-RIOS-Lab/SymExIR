@@ -188,8 +188,12 @@ class VerificationContext:
     def add_new_value(self, name: str, value, type):
         if name in self.var2list.keys():
             return
-        
-        self.smt_list.append(z3.simplify(value))
+
+        if z3.is_expr(value):
+            self.smt_list.append(z3.simplify(value))
+        else:
+            self.smt_list.append(value)
+
         self.var2list[name] = len(self.smt_list) - 1
         self.var2type[name] = type
 
@@ -203,7 +207,7 @@ class VerificationContext:
         if name not in self.var2type.keys():
             raise ValueError("There is no value({}) you want.".format(name))
         return self.var2type[name]
-    
+
     def is_there_same_value(self, name: str) -> bool:
         if name in self.var2list.keys():
             return True
