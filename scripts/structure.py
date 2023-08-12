@@ -137,7 +137,7 @@ class VerificationLaodInfo:
         for i in range(len(instrs)):
             instr_type = get_instr_type(self.instrs[i])
             self._loc2_instrType.append(instr_type)
-            self._loc2_instrDict.append(get_instr_dict(self.instrs[i]))
+            self._loc2_instrDict.append(get_instr_dict(self.instrs[i], instr_type))
             value_name = get_instr_value_name(self.instrs[i], instr_type)
             self._loc2_instrValueName.append(value_name)
             self._valueName2_loc[value_name] = i
@@ -156,7 +156,11 @@ class VerificationLaodInfo:
 
     @property
     def loc2_instrType(self):
-        return self._loc2_instrDict
+        return self._loc2_instrType
+
+    @property
+    def load_info(self):
+        return self._load_info
 
     def get_instr_type(self, loc):
         return self.loc2_instrType[loc]
@@ -198,7 +202,7 @@ class VerificationContext:
     def get_value_type_by_name(self, name: str):
         if name not in self.var2type.keys():
             raise ValueError("There is no value({}) you want.".format(name))
-        return self.var2type["name"]
+        return self.var2type[name]
     
     def is_there_same_value(self, name: str) -> bool:
         if name in self.var2list.keys():

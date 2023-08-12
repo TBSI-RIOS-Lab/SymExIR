@@ -28,21 +28,22 @@ def smt_add_constraint(value: str, value_type: str, assert_value, solver: z3.Sol
 
 
 def verify(
-    smts: list[z3.ExprRef], verify_info: VerificationLaodInfo, load_info: LoadAssertInfo
+    verify_info: VerificationLaodInfo, load_info: LoadAssertInfo
 ):
     solver = init_solver()
     instrs = verify_info.instrs
     smt = VerificationContext()
     for loc in range(len(instrs)):
         instr_type = verify_info.get_instr_type(loc)
-        value_name = get_instr_value_name(instrs[loc])
+        print(type(instr_type))
+        value_name = get_instr_value_name(instrs[loc], instr_type)
         
         if value_name == "NoValueName":
             pass
 
         ps.parse_instr(instrs[loc], instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
-        assert_value_str = load_info.get_value(loc)
+        assert_value_str = load_info.get_value_str(loc)
         if is_assert_instr_type(instr_type):
             solver.reset()
 
@@ -55,3 +56,4 @@ def verify(
         vec_flag = ps.is_vec_type(value_type)
         new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
         smt.repalce_new_value(value_name, new_value)
+        smt.dump()
