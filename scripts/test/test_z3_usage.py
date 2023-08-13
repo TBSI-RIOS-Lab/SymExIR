@@ -40,7 +40,13 @@ def test_z3_reset():
     print(solver.model())
 
 
+def test_z3_val():
+    a = z3.BitVecVal(0x-00000001,32)
+    print("0x%.8x" % a.as_long())
+    print("0x%.8x" % a.as_signed_long())
+
 if __name__ == "__main__":
     # test_list_z3()
     # test_list_z3_1()
     test_z3_reset()
+    test_z3_val()

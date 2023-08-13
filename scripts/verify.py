@@ -35,7 +35,6 @@ def verify(
     smt = VerificationContext()
     for loc in range(len(instrs)):
         instr_type = verify_info.get_instr_type(loc)
-        print(type(instr_type))
         value_name = get_instr_value_name(instrs[loc], instr_type)
         
         if value_name == "NoValueName":
