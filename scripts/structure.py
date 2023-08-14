@@ -197,7 +197,7 @@ class VerificationContext:
         self.var2list[name] = len(self.smt_list) - 1
         self.var2type[name] = type
 
-    def find_value_by_name(self, name: str):
+    def get_value_by_name(self, name: str):
         if name not in self.var2list.keys():
             raise ValueError("There is no value({}) you want.".format(name))
         loc = self.var2list[name]

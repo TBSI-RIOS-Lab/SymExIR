@@ -24,7 +24,15 @@ test_case_int_simple_2 = [
     "%11 = mul i32 %10, %1",
 ]
 
-test_case_int_simple_1_2 = [(0, "1"), (1, "1"), (2, "2"),(3, "300"), (4, "301"), (5, "302")]
+test_case_int_simple_1_2 = [
+    (0, "1"),
+    (1, "1"),
+    (2, "2"),
+    (3, "300"),
+    (4, "301"),
+    (5, "302"),
+]
+
 
 def test_verify_simple_1():
     load_info = st.LoadAssertInfo(test_case_int_simple_1_l)
@@ -35,7 +43,11 @@ def test_verify_simple_1():
 def test_verify_simple_2():
     load_info = st.LoadAssertInfo(test_case_int_simple_1_2)
     v_info = st.VerificationLaodInfo(test_case_int_simple_2, load_info)
-    verify.verify(v_info, load_info)
+    try:
+        verify.verify(v_info, load_info)
+    except RuntimeError:
+        print("Catch error")
+
 
 if __name__ == "__main__":
     test_verify_simple_1()

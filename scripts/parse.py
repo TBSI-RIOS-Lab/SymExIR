@@ -165,9 +165,9 @@ def get_basic_smt_sort(var_type: str) -> z3.SortRef:
     """Return the SMT sort for the llvm sort."""
     if get_inner_type(var_type) == st.DataType.IntegerType:
         return z3.BitVecSort(get_type_precision(var_type))
-    if get_inner_type(var_type) == st.DataType.BooleanType:
+    elif get_inner_type(var_type) == st.DataType.BooleanType:
         return z3.BoolSort()
-    if get_inner_type(var_type) == st.DataType.FloatingType:
+    elif get_inner_type(var_type) == st.DataType.FloatingType:
         precision = get_type_precision(var_type)
         if precision == 16:
             return z3.Float16()
@@ -181,8 +181,8 @@ def get_basic_smt_sort(var_type: str) -> z3.SortRef:
             return z3.FPSort(15, 64)
         if precision == 128:
             return z3.Float128()
-
-    raise NotImplementedError(f"get_smt_sort {var_type.__class__}")
+    else:
+        raise NotImplementedError(f"get_smt_sort {var_type.__class__}")
 
 
 def get_basic_smt_value(name: str, type: str):
@@ -190,12 +190,12 @@ def get_basic_smt_value(name: str, type: str):
     smt_sort = get_basic_smt_sort(type)
     if get_inner_type(type) == st.DataType.IntegerType:
         return z3.BitVec(name, smt_sort)
-    if get_inner_type(type) == st.DataType.BooleanType:
+    elif get_inner_type(type) == st.DataType.BooleanType:
         return z3.Bool(name)
-    if get_inner_type(type) == st.DataType.FloatingType:
+    elif get_inner_type(type) == st.DataType.FloatingType:
         return z3.FP(name, smt_sort)
-
-    raise NotImplementedError(f"get_smt_sort {type.__class__}")
+    else:
+        raise NotImplementedError(f"get_smt_sort {type.__class__}")
 
 
 def get_basic_smt_val(
@@ -326,7 +326,7 @@ def get_nn_basedOn_type(
 
 def get_value_from_smt(one: str, smt_block: st.VerificationContext):
     if one.startswith("%"):
-        value = smt_block.find_value_by_name(one)
+        value = smt_block.get_value_by_name(one)
     else:
         raise RuntimeError("The value name is started with %.")
     return value

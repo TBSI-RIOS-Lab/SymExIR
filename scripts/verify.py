@@ -17,42 +17,49 @@ def init_solver() -> z3.Solver:
     return solver
 
 
-def smt_add_constraint(value: str, value_type: str, assert_value, solver: z3.Solver):
-    if value_type == "int":
-        solver.add(assert_value == int(value))
-    elif value_type == "float":
-        solver.add(
-            assert_value - float(value) > 0
-            and assert_value - float(value) < float_tolerance
-        )
-
-
-def verify(
-    verify_info: VerificationLaodInfo, load_info: LoadAssertInfo
+def smt_add_constraint(
+    value: str,
+    value_type: str,
+    smt: VerificationContext(),
+    name: str,
+    solver: z3.Solver,
 ):
+    if ps.get_inner_type(value_type) == DataType.IntegerType:
+        solver.add(smt.get_value_by_name(name) == int(value))
+    elif ps.get_inner_type(value_type) == DataType.BooleanType:
+        pass  # TODO: raise error or not?
+    elif ps.get_inner_type(value_type) == DataType.FloatingType:
+        solver.add(
+            smt.get_value_by_name(name) - float(value) > 0
+            and smt.get_value_by_name(name) - float(value) < float_tolerance
+        )
+    else:
+        raise RuntimeError("Over type({})!".format(value_type))
+
+
+def verify(verify_info: VerificationLaodInfo, load_info: LoadAssertInfo):
     solver = init_solver()
     instrs = verify_info.instrs
     smt = VerificationContext()
     for loc in range(len(instrs)):
         instr_type = verify_info.get_instr_type(loc)
         value_name = get_instr_value_name(instrs[loc], instr_type)
-        
+
         if value_name == "NoValueName":
             pass
 
         ps.parse_instr(instrs[loc], instr_type, smt, verify_info.get_instr_dict(loc))
+        print(smt.get_value_by_name(value_name))
         value_type = smt.get_value_type_by_name(value_name)
         assert_value_str = load_info.get_value_str(loc)
         if is_assert_instr_type(instr_type):
-            solver.reset()
-
             # add assertion
-            smt_add_constraint(assert_value_str, value_type, smt.find_value_by_name(value_name), solver) 
+            smt_add_constraint(assert_value_str, value_type, smt, value_name, solver)
             if solver.check() != z3.sat:
                 raise RuntimeError("A value that does not meet expectations was found")
-            
+
         # replace the val with a value.
         vec_flag = ps.is_vec_type(value_type)
         new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
         smt.repalce_new_value(value_name, new_value)
-        smt.dump()
+        # smt.dump()

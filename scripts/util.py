@@ -407,7 +407,7 @@ constraint_instr_type = {
 
 
 def is_assert_instr_type(instr_type: str):
-    return True if instr_type in no_assert_group else False
+    return False if instr_type in no_assert_group else True
 
 
 def is_constraint_type(instr_type: str):
