@@ -1181,6 +1181,7 @@ def parse_instr_two_op_function_v(
     z3_function_two_op,
 ):
     first, second = get_ready_two_value_basic(value_name, data_token, smt_block)
+    print(first, second)
     if not is_same_z3_vector_type(first, second):
         raise RuntimeError("The input for z3 vector is not python list!\n")
     assert isinstance(first, List) and isinstance(second, List)

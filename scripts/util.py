@@ -414,6 +414,10 @@ def is_constraint_type(instr_type: str):
     return True if instr_type in constraint_instr_type else False
 
 
+def is_read_from_memory_instr_type(instr_type: str):
+    return True if instr_type in no_assert_group else False
+
+
 # def get_instr_return_type(instr: str, instr_type: str, instr_info: Dict) -> str:
 #     if instr_info == None:
 #         instr_info = get_instr_dict(instr)
