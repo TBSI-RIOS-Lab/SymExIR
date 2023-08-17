@@ -398,7 +398,12 @@ def generate_instr_types(instrs: List[str]) -> List[str]:
     return instr_types
 
 
-no_assert_group = {"load"}
+no_assert_group = {
+    "load",
+    "store",
+    "insertvalue",
+    "extractvalue",
+}
 
 
 constraint_instr_type = {
@@ -453,3 +458,18 @@ def is_read_from_memory_instr_type(instr_type: str):
 
 #     elif instr_type in conversion_operations_group:
 #         return instr_info["ty2"]
+
+
+def is_vec_type(value_type: str):
+    if value_type.startswith("<"):
+        return True
+    else:
+        return False
+
+
+def get_vector_inner_type(value_type: str):
+    if not is_vec_type(value_type):
+        raise RuntimeError("Must be vector type!")
+    v_type = value_type.strip("<").strip(">")
+    v_type = v_type.split("x")[-1].strip()
+    return v_type

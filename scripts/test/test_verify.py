@@ -89,8 +89,17 @@ test_case_int_vector_1_info = [
     (0, "< i32 1, i32 1, i32 1>"),
     (1, "< i32 1, i32 1, i32 1>"),
     (2, "< i32 2, i32 3, i32 3>"),
-    (2, "< i32 0, i32 4294967295, i32 4294967295>"),
+    (3, "< i32 0, i32 4294967295, i32 4294967295>"),
 ]
+
+
+test_case_float_simple_1 = [
+    "%1 = load double, double* %5, align 8, !tbaa !4",
+    "%6 = load double, double* %5, align 8, !tbaa !4",
+    "%7 = fadd double %6, %1",
+]
+
+test_case_float_simple_1_info = [(0, "1.0"), (1, "2.01"), (2, "3.01")]
 
 
 def test_verify_simple_1():
@@ -119,13 +128,19 @@ def test_verify_simple_3():
 def test_verify_int_vector_1():
     load_info = st.LoadAssertInfo(test_case_int_vector_1_info)
     v_info = st.VerificationLaodInfo(test_case_int_vector_1, load_info)
-    # verify.verify(v_info, load_info, False) 
+    verify.verify(v_info, load_info)
 
 
 def test_calculate_simple_3():
     load_info = st.LoadAssertInfo(test_case_int_simple_3_info)
     v_info = st.VerificationLaodInfo(test_case_int_simple_3, load_info)
     verify.generate_calculate_result(v_info, load_info)
+
+
+def test_verify_float_simple_1():
+    load_info = st.LoadAssertInfo(test_case_float_simple_1_info)
+    v_info = st.VerificationLaodInfo(test_case_float_simple_1, load_info)
+    verify.verify(v_info, load_info)
 
 
 def test_calculate_int_vector_1():
@@ -141,3 +156,4 @@ if __name__ == "__main__":
     test_verify_int_vector_1()
     test_calculate_simple_3()
     test_calculate_int_vector_1()
+    test_verify_float_simple_1()

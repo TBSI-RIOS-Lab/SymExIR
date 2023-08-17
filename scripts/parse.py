@@ -244,13 +244,6 @@ def parse_instr_getelementptr(
     smt_block.add_new_value(value_name, value, "ptr")
 
 
-def is_vec_type(value_type: str):
-    if value_type.startswith("<"):
-        return True
-    else:
-        return False
-
-
 def get_info_from_vector_type(value_type: str) -> Tuple[int, str]:
     pattern = re.compile("<(?P<size>.*?) x (?P<type>.*?)>")
     search_result = re.search(pattern, value_type.strip(" "))
@@ -1181,7 +1174,7 @@ def parse_instr_two_op_function_v(
     z3_function_two_op,
 ):
     first, second = get_ready_two_value_basic(value_name, data_token, smt_block)
-    print(first, second)
+    # print(first, second)
     if not is_same_z3_vector_type(first, second):
         raise RuntimeError("The input for z3 vector is not python list!\n")
     assert isinstance(first, List) and isinstance(second, List)
