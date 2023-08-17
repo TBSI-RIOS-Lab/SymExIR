@@ -55,8 +55,18 @@ def test_z3_add():
     solver.add(l[2] == 20)
     assert solver.check() == z3.sat
     print(solver.model())
-    print(type(l[2]))
-    print(type(l[0]))
+    solver.add(l[2] == z3.BitVecVal(20, 32))
+    assert solver.check() == z3.sat
+    print(solver.model())
+
+
+def test_float_val_z3_solver():
+    solver = z3.Solver()
+    x = z3.FPVal(20.0, z3.FPSort(8, 24))
+    y = z3.FPVal(20.001, z3.FPSort(8, 24))
+    c = z3.fpAdd(z3.RTZ(), x, y)
+    solver.add(c == 40.002)
+    assert solver.check() == z3.sat
 
 
 if __name__ == "__main__":
@@ -65,3 +75,4 @@ if __name__ == "__main__":
     # test_z3_reset()
     # test_z3_val()
     test_z3_add()
+    test_float_val_z3_solver()
