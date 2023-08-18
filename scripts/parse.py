@@ -293,7 +293,7 @@ def get_smt_val_vector(value_vec, vec_type):
         key1 = res_split[0]
         key2 = res_split[1]
         if key1 != var_type:
-            raise TypeError("The var_type in list is not same as vec_type!\n")
+            raise TypeError("The var_type({}) in list is not same as vec_type({})!\n".format(var_type, key1))
         v_list.append(key2)
     sort = get_basic_smt_sort(var_type)
     if get_inner_type(var_type) == st.DataType.IntegerType:
@@ -1158,8 +1158,11 @@ def parse_instr_insertelement(
         data_token["ty2"],
         data_token["idx"],
     )
-
-    value_insert = get_single_value(val, smt_block, vec_ty_example)
+    if vs == None:
+        vec_type = "< " + str(n) + " x " + str(ty) + ">"
+    else: 
+        raise RuntimeError("Don't support vscal vector right now!") 
+    value_insert = get_single_value(val, smt_block, vec_type)
     if not isinstance(value_insert, list):
         raise RuntimeError(
             "The extractelement instr is only for vector! Need: val({})".format(val)
@@ -1172,8 +1175,8 @@ def parse_instr_insertelement(
         raise OverflowError("Over the len of value_ex")
 
     insertValue = get_nn_basedOn_type(ty1, elt, False)
-
-    value[int(idx)] = insertValue
+    print(type(insertValue))
+    value[int(idx)-1] = insertValue
     
     smt_block.add_new_value(value_name, value, ty)
 
@@ -1194,7 +1197,11 @@ def parse_instr_extractelement(
         data_token["ty1"],
         data_token["op1"],
     )
-    value_ex = get_single_value(val, smt_block, vec_ty_example)
+    if vs == None:
+        vec_type = "< " + str(n) + " x " + str(ty) + ">"
+    else: 
+        raise RuntimeError("Don't support vscal vector right now!") 
+    value_ex = get_single_value(val, smt_block, vec_type)
     if not isinstance(value_ex, list):
         raise RuntimeError(
             "The extractelement instr is only for vector! Need: val({})".format(val)
@@ -1203,7 +1210,7 @@ def parse_instr_extractelement(
         raise RuntimeError("The op1({}) must be number".format(op1))
     if int(op1) >= len(value_ex):
         raise OverflowError("Over the len of value_ex")
-    value = copy.deepcopy(value_ex[op1])
+    value = copy.deepcopy(value_ex[int(op1)-1])
     smt_block.add_new_value(value_name, value, ty)
 
 
@@ -1222,7 +1229,9 @@ def parse_instr_shufflevector(
     if data_token == None:
         data_token = get_instr_dict(instr, "shufflevector")
 
-    v1, v2, mask, v1_type, v2_type, v1_size, v2_size, mask_size = (
+    v1_vs, v2_vs, v1, v2, mask, v1_type, v2_type, v1_size, v2_size, mask_size = (
+        data_token["v1_vs"],
+        data_token["v2_vs"],
         data_token["v1"],
         data_token["v2"],
         data_token["v3"],
@@ -1232,9 +1241,13 @@ def parse_instr_shufflevector(
         data_token["v2_n"],
         data_token["mask_n"],
     )
-    # FIX: remove the vec_ty_example..
-    value_1 = get_single_value(v1, smt_block, vec_ty_example)
-    value_2 = get_single_value(v2, smt_block, vec_ty_example)
+    if v1_vs == None and v2_vs == None:
+        value1_vec_type = "< " + str(v1_size) + " x " + str(v1_type) + ">"
+        value2_vec_type = "< " + str(v2_size) + " x " + str(v2_type) + ">"
+    else: 
+        raise RuntimeError("Don't support vscal vector right now!") 
+    value_1 = get_single_value(v1, smt_block, value1_vec_type)
+    value_2 = get_single_value(v2, smt_block, value2_vec_type)
     assert isinstance(value_1, List) and isinstance(value_2, List)
     value_before = value_1 + value_2
     mask_list = extra_loc_from_mask(mask)
@@ -1250,7 +1263,7 @@ def parse_instr_shufflevector(
 instr_function_vector_type_dict = {
     "shufflevector": parse_instr_shufflevector,
     "extractelement": parse_instr_extractelement,
-    "insertelement": parse_instr_shufflevector,
+    "insertelement": parse_instr_insertelement,
 }
 
 
@@ -1836,7 +1849,7 @@ def parse_instr(
     if is_no_return_instr(instr_type):
         parse_instr_no_return()
     elif is_vectortype_instr(instr_type):
-        parse_instr_shufflevector(instr, smt_block, instr_info_dict)
+        parse_instr_vector_type(instr_type, instr, smt_block, instr_info_dict)
     elif is_call_instr(instr_type):
         parse_instr_call(instr, instr_type, smt_block, instr_info_dict)
     elif is_aggregate_operations(instr_type):
