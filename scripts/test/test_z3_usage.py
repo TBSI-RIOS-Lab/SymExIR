@@ -63,9 +63,9 @@ def test_z3_add():
 def test_float_val_z3_solver():
     solver = z3.Solver()
     x = z3.FPVal(20.0, z3.FPSort(8, 24))
-    y = z3.FPVal(20.001, z3.FPSort(8, 24))
+    y = z3.FPVal(20.000000000001, z3.FPSort(8, 24))
     c = z3.fpAdd(z3.RTZ(), x, y)
-    solver.add(c == 40.002)
+    solver.add(c == 40.00000000000)
     assert solver.check() == z3.sat
 
 

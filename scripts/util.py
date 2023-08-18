@@ -403,6 +403,17 @@ no_assert_group = {
     "store",
     "insertvalue",
     "extractvalue",
+    "ret",
+    "br",
+    "switch",
+    "indirectbr",
+    "invoke",
+    "callbr",
+    "resume",
+    "catchswitch",
+    "catchret",
+    "cleanupret",
+    "unreachable",
 }
 
 
