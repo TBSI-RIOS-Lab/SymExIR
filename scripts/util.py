@@ -156,8 +156,6 @@ regex_tmp = ".*"
 regex_cconv_flag = "(fastcc |ccc |coldcc |cc 10 |cc 11 |webkit_jscc |anyregcc |preserve_mostcc |cxx_fast_tlscc |tailcc |swiftcc |swifttailcc |cfguard_checkcc |cc <.*>)"
 # NOTE: The poison value is ignored.
 
-vec_ty_example = "<1 x i32>"
-
 
 def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
     pattern = None
@@ -206,13 +204,17 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
 
     elif instr_type in extractelement_type:
         pattern = re.compile(
-            "^extractelement " + regex_vscale_n_t + ", " + regex_type_secondop_nov + "$"
+            "^extractelement "
+            + "<((?P<vs>.*?) x ){0,1}(?P<n>.*?) x (?P<ty>.*?)> (?P<val><.*?>|.*?)"
+            + ", "
+            + "(?P<ty1>.*?) (?P<op1>.*?)"
+            + "$"
         )
 
     elif instr_type in insertelement_type:
         pattern = re.compile(
             "^insertelement "
-            + regex_vscale_n_t
+            + "<((?P<vs>.*?) x ){0,1}(?P<n>.*?) x (?P<ty>.*?)> (?P<val><.*?>|.*?)"
             + ", (?P<ty1>.*?) (?P<elt>.*?), (?P<ty2>.*?) (?P<idx>.*?)"
             + "$"
         )
@@ -243,7 +245,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             "^"
             + instr_type
             + " "
-            + "(?P<type>\{.*?\}) "
+            + "(?P<type>{.*?}) "
             + "(?P<op_val>.*?), "
             + "(?P<idx>.*?)"
             + "$"
@@ -254,7 +256,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             "^"
             + instr_type
             + " "
-            + "(?P<type>\{.*?\}) "
+            + "(?P<type>{.*?}) "
             + "(?P<op_val>.*?), "
             + "(?P<idx>.*?)"
             + "$"
@@ -307,7 +309,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + "(atomic ){0,1}"
             + "(volatile ){0,1}"
             + "(?P<ty><.*x.*>|.*?) "
-            + "(?P<value><.*x.*>|.*?), (?P<ptr_ty><.*x.*>\*|.*?) "
+            + "(?P<value><.*x.*>|.*?), (?P<ptr_ty><.*x.*>|.*?) "
             + "(?P<pointer>.*?)"
             + "(,.*?){0,1}$"
         )

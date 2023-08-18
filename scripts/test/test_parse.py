@@ -141,9 +141,14 @@ def test_regex_sample():
     test_case_and_v = "and <2 x i32> < i32 -2, i32 4>, %var"
     test_case_or = "or i32 4, %var"
     test_case_xor = "xor i32 4, %var"
-    test_case_extractelement = "extractelement <4 x i32> %vec, i32 0"
+    test_case_extractelement = (
+        "extractelement <4 x i32> < i32 8, i32 8, i32 8, i32 8>, i32 0"
+    )
     test_case_extractelement_vscale = "extractelement <6 x 4 x i32> %vec, i32 0"
     test_case_insertelement = "insertelement <4 x i32> %vec, i32 1, i32 0"
+    test_case_insertelement_vector = (
+        "insertelement <4 x i32> < i32 8, i32 8, i32 8, i32 8>, i32 1, i32 0"
+    )
     test_case_shufflevector = "shufflevector <4 x i32> %v1, <4 x i32> %v2, <4 x i32> <i32 0, i32 4, i32 1, i32 5>"
     test_case_trunc = "trunc i32 122 to i1"
     test_case_trunc_v = "trunc <3 x i16> <i16 8, i16 7, i16 8> to <3 x i8>"
@@ -317,7 +322,7 @@ def test_regex_sample():
     assert gs["vs"] == None
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
-    assert gs["val"] == "%vec"
+    assert gs["val"] == "< i32 8, i32 8, i32 8, i32 8>"
     assert gs["ty1"] == "i32"
 
     gs = parse.extra_slice_token(test_case_extractelement_vscale, "extractelement")
@@ -326,7 +331,6 @@ def test_regex_sample():
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
     assert gs["ty1"] == "i32"
-    print(gs.groupdict())
 
     gs = parse.extra_slice_token(test_case_insertelement, "insertelement")
     assert gs != None
@@ -335,7 +339,14 @@ def test_regex_sample():
     assert gs["ty1"] == "i32"
     assert gs["ty2"] == "i32"
     assert gs["val"] == "%vec"
-    print(gs.groupdict())
+
+    gs = parse.extra_slice_token(test_case_insertelement_vector, "insertelement")
+    assert gs != None
+    assert gs["n"] == "4"
+    assert gs["ty"] == "i32"
+    assert gs["ty1"] == "i32"
+    assert gs["ty2"] == "i32"
+    assert gs["val"] == "< i32 8, i32 8, i32 8, i32 8>"
 
     gs = parse.extra_slice_token(test_case_shufflevector, "shufflevector")
     assert gs != None
@@ -600,6 +611,15 @@ def test_parse_instr_call():
     # smt.dump()
 
 
+def test_parse_instr_vector_type():
+    smt = st.VerificationContext()
+    instr_1 = "%1 = extractelement <4 x float> < float 1.01, float 2.0, float 3.0, float 4.0>, i32 0 "
+    instr_2 = "%2 = insertelement <4 x float> < float 1.01, float 2.0, float 3.0, float 4.0>, float 2.0, i32 0 "
+    parse.parse_instr(instr_1, "extractelement", smt)
+    parse.parse_instr(instr_2, "insertelement", smt)
+    smt.dump()
+
+
 def test_parse_instr_shufflevector():
     smt = st.VerificationContext()
     instr_1 = "%1 = shufflevector <2 x i32> < i32 1, i32 2>, <2 x i32> < i32 3, i32 4>, <3 x i32> <i32 0, i32 1, i32 2>"
@@ -610,7 +630,7 @@ def test_parse_instr_shufflevector():
     )
     parse.parse_instr_shufflevector(instr_1, smt, data_token)
     parse.parse_instr(instr_2, "shufflevector", smt)
-    smt.dump()
+    # smt.dump()
 
 
 def test_parse_aggregate_operations():
@@ -621,7 +641,7 @@ def test_parse_aggregate_operations():
     parse.parse_instr(instr_1, "extractvalue", smt)
     parse.parse_instr(instr_2, "insertvalue", smt)
     parse.parse_instr(instr_3, "insertvalue", smt)
-    smt.dump_with_type()
+    # smt.dump_with_type()
 
 
 def test_whole_proccess_1():
@@ -655,3 +675,4 @@ if __name__ == "__main__":
     test_parse_vector_int()
     test_parse_instr_call()
     test_whole_proccess_1()
+    test_parse_instr_vector_type()
