@@ -326,6 +326,7 @@ def test_regex_sample():
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
     assert gs["ty1"] == "i32"
+    print(gs.groupdict())
 
     gs = parse.extra_slice_token(test_case_insertelement, "insertelement")
     assert gs != None
@@ -334,6 +335,7 @@ def test_regex_sample():
     assert gs["ty1"] == "i32"
     assert gs["ty2"] == "i32"
     assert gs["val"] == "%vec"
+    print(gs.groupdict())
 
     gs = parse.extra_slice_token(test_case_shufflevector, "shufflevector")
     assert gs != None
@@ -608,7 +610,7 @@ def test_parse_instr_shufflevector():
     )
     parse.parse_instr_shufflevector(instr_1, smt, data_token)
     parse.parse_instr(instr_2, "shufflevector", smt)
-    # smt.dump()
+    smt.dump()
 
 
 def test_parse_aggregate_operations():

@@ -54,7 +54,7 @@ def smt_add_constraint(
     else:
         raise RuntimeError("Over type({})!".format(value_type))
 
-
+# TODO: add 0xffff type..
 def verify(
     verify_info: VerificationLaodInfo,
     load_info: LoadAssertInfo,

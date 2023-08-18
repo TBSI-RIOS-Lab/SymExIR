@@ -1,3 +1,4 @@
+import copy
 import operator as opt
 from copy import deepcopy
 from typing import Dict, List, Set, Tuple
@@ -1124,6 +1125,88 @@ instr_function_simple_dict = {
 
 
 # TODO: add vscale.
+def parse_instr_vector_type(
+    instr_type: str,
+    instr: str,
+    smt_block: st.VerificationContext,
+    data_token: Dict[str, str] | None,
+):
+    if instr_type not in instr_function_vector_type_dict.keys():
+        raise RuntimeError(
+            "Can't find the type({}) in instr_function_vector_type_dict!".format(
+                instr_type
+            )
+        )
+    instr_function_vector_type_dict[instr_type](instr, smt_block, data_token)
+
+
+def parse_instr_insertelement(
+    instr: str, smt_block: st.VerificationContext, data_token: Dict[str, str] | None
+):
+    """"""
+    value_name = re.split("=", instr.strip())[0].strip(" ")
+    if data_token == None:
+        data_token = get_instr_dict(instr, "insertelement")
+
+    vs, n, ty, val, ty1, elt, ty2, idx = (
+        data_token["vs"],
+        data_token["n"],
+        data_token["ty"],
+        data_token["val"],
+        data_token["ty1"],
+        data_token["elt"],
+        data_token["ty2"],
+        data_token["idx"],
+    )
+
+    value_insert = get_single_value(val, smt_block, vec_ty_example)
+    if not isinstance(value_insert, list):
+        raise RuntimeError(
+            "The extractelement instr is only for vector! Need: val({})".format(val)
+        )
+    value = [copy.deepcopy(value_insert[i]) for i in range(len(value_insert))]
+    if not is_number(idx):
+        raise RuntimeError("The idx({}) must be number".format(idx))
+
+    if int(idx) >= len(value):
+        raise OverflowError("Over the len of value_ex")
+
+    insertValue = get_nn_basedOn_type(ty1, elt, False)
+
+    value[int(idx)] = insertValue
+    
+    smt_block.add_new_value(value_name, value, ty)
+
+
+def parse_instr_extractelement(
+    instr: str, smt_block: st.VerificationContext, data_token: Dict[str, str] | None
+):
+    """"""
+    value_name = re.split("=", instr.strip())[0].strip(" ")
+    if data_token == None:
+        data_token = get_instr_dict(instr, "extractelement")
+
+    vs, n, ty, val, ty1, op1 = (
+        data_token["vs"],
+        data_token["n"],
+        data_token["ty"],
+        data_token["val"],
+        data_token["ty1"],
+        data_token["op1"],
+    )
+    value_ex = get_single_value(val, smt_block, vec_ty_example)
+    if not isinstance(value_ex, list):
+        raise RuntimeError(
+            "The extractelement instr is only for vector! Need: val({})".format(val)
+        )
+    if not is_number(op1):
+        raise RuntimeError("The op1({}) must be number".format(op1))
+    if int(op1) >= len(value_ex):
+        raise OverflowError("Over the len of value_ex")
+    value = copy.deepcopy(value_ex[op1])
+    smt_block.add_new_value(value_name, value, ty)
+
+
 def parse_instr_shufflevector(
     instr: str, smt_block: st.VerificationContext, data_token: Dict[str, str] | None
 ):
@@ -1149,7 +1232,7 @@ def parse_instr_shufflevector(
         data_token["v2_n"],
         data_token["mask_n"],
     )
-
+    # FIX: remove the vec_ty_example..
     value_1 = get_single_value(v1, smt_block, vec_ty_example)
     value_2 = get_single_value(v2, smt_block, vec_ty_example)
     assert isinstance(value_1, List) and isinstance(value_2, List)
@@ -1164,7 +1247,11 @@ def parse_instr_shufflevector(
     smt_block.add_new_value(value_name, res_list, res_ty)
 
 
-instr_function_vector_type_dict = {"shufflevector"}
+instr_function_vector_type_dict = {
+    "shufflevector": parse_instr_shufflevector,
+    "extractelement": parse_instr_extractelement,
+    "insertelement": parse_instr_shufflevector,
+}
 
 
 def parse_instr_two_op_function_v(
@@ -1520,7 +1607,7 @@ def parse_instr_no_return():
 
 
 def is_vectortype_instr(instr_type: str):
-    if instr_type in instr_function_vector_type_dict:
+    if instr_type in instr_function_vector_type_dict.keys():
         return True
     else:
         return False
