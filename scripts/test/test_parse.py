@@ -613,11 +613,15 @@ def test_parse_instr_call():
 
 def test_parse_instr_vector_type():
     smt = st.VerificationContext()
-    instr_1 = "%1 = extractelement <4 x float> < float 1.01, float 2.0, float 3.0, float 4.0>, i32 0 "
-    instr_2 = "%2 = insertelement <4 x float> < float 1.01, float 2.0, float 3.0, float 4.0>, float 2.0, i32 0 "
+    add_value = parse.get_nn_basedOn_type(
+        "<4 x float>", "< float 2.011, float 2.0, float 3.0, float 4.0>", True
+    )
+    smt.add_new_value("%vec", add_value, "<4 x float>")
+    instr_1 = "%1 = extractelement <4 x float> %vec, i32 0"
+    instr_2 = "%2 = insertelement <4 x float> < float 3.01, float 2.0, float 3.0, float 4.0>, float 1, i32 0 "
     parse.parse_instr(instr_1, "extractelement", smt)
     parse.parse_instr(instr_2, "insertelement", smt)
-    smt.dump()
+    smt.dump_with_value_name()
 
 
 def test_parse_instr_shufflevector():
