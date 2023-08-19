@@ -293,7 +293,11 @@ def get_smt_val_vector(value_vec, vec_type):
         key1 = res_split[0]
         key2 = res_split[1]
         if key1 != var_type:
-            raise TypeError("The var_type({}) in list is not same as vec_type({})!\n".format(var_type, key1))
+            raise TypeError(
+                "The var_type({}) in list is not same as vec_type({})!\n".format(
+                    var_type, key1
+                )
+            )
         v_list.append(key2)
     sort = get_basic_smt_sort(var_type)
     if get_inner_type(var_type) == st.DataType.IntegerType:
@@ -1160,8 +1164,8 @@ def parse_instr_insertelement(
     )
     if vs == None:
         vec_type = "< " + str(n) + " x " + str(ty) + ">"
-    else: 
-        raise RuntimeError("Don't support vscal vector right now!") 
+    else:
+        raise RuntimeError("Don't support vscal vector right now!")
     value_insert = get_single_value(val, smt_block, vec_type)
     if not isinstance(value_insert, list):
         raise RuntimeError(
@@ -1171,13 +1175,12 @@ def parse_instr_insertelement(
     if not is_number(idx):
         raise RuntimeError("The idx({}) must be number".format(idx))
 
-    if int(idx) >= len(value):
+    idx_intger = int(idx)
+    if idx_intger >= len(value):
         raise OverflowError("Over the len of value_ex")
 
     insertValue = get_nn_basedOn_type(ty1, elt, False)
-    print(type(insertValue))
-    value[int(idx)-1] = insertValue
-    
+    value[idx_intger] = insertValue
     smt_block.add_new_value(value_name, value, ty)
 
 
@@ -1199,8 +1202,8 @@ def parse_instr_extractelement(
     )
     if vs == None:
         vec_type = "< " + str(n) + " x " + str(ty) + ">"
-    else: 
-        raise RuntimeError("Don't support vscal vector right now!") 
+    else:
+        raise RuntimeError("Don't support vscal vector right now!")
     value_ex = get_single_value(val, smt_block, vec_type)
     if not isinstance(value_ex, list):
         raise RuntimeError(
@@ -1208,9 +1211,10 @@ def parse_instr_extractelement(
         )
     if not is_number(op1):
         raise RuntimeError("The op1({}) must be number".format(op1))
-    if int(op1) >= len(value_ex):
+    op1_intger = int(op1)
+    if op1_intger >= len(value_ex):
         raise OverflowError("Over the len of value_ex")
-    value = copy.deepcopy(value_ex[int(op1)-1])
+    value = copy.deepcopy(value_ex[op1_intger])
     smt_block.add_new_value(value_name, value, ty)
 
 
@@ -1244,8 +1248,8 @@ def parse_instr_shufflevector(
     if v1_vs == None and v2_vs == None:
         value1_vec_type = "< " + str(v1_size) + " x " + str(v1_type) + ">"
         value2_vec_type = "< " + str(v2_size) + " x " + str(v2_type) + ">"
-    else: 
-        raise RuntimeError("Don't support vscal vector right now!") 
+    else:
+        raise RuntimeError("Don't support vscal vector right now!")
     value_1 = get_single_value(v1, smt_block, value1_vec_type)
     value_2 = get_single_value(v2, smt_block, value2_vec_type)
     assert isinstance(value_1, List) and isinstance(value_2, List)
