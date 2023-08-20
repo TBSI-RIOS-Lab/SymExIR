@@ -102,6 +102,16 @@ test_case_float_simple_1 = [
 test_case_float_simple_1_info = [(0, "1.0"), (1, "2.01"), (2, "3.01")]
 
 
+test_case_vector_llvm_1 = [
+    "%1 = extractelement <4 x float> < float 3.01, float 2.0, float 3.0, float 4.0>, i32 0",
+    "%2 = insertelement <4 x float> < float 3.01, float 2.0, float 3.0, float 4.0>, float 1, i32 0 ",
+]
+
+test_case_vector_llvm_1_info = [
+    (0, "< i32 1, i32 1, i32 1>"),
+    (1, "< i32 1, i32 1, i32 1>"), 
+]
+
 def test_verify_simple_1():
     load_info = st.LoadAssertInfo(test_case_int_simple_1_info)
     v_info = st.VerificationLaodInfo(test_case_int_simple_1, load_info)

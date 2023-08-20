@@ -1667,6 +1667,110 @@ def is_vectortype_basedon_dict_token(token: Dict, instr, instr_type):
         )
 
 
+def is_str_mean_true(input_str: str) -> bool:
+    input_str = input_str.strip()
+    waiting_list = {"true", "false", "1", "0"}
+    if input_str not in waiting_list:
+        raise ValueError("The input({}) is not in the waiting_list!".format(input_str))
+
+    if input_str == "true" or input_str == "1":
+        return True
+    else:
+        return False
+
+
+def is_select_instr_type(instr_type):
+    return True if instr_type == "select" else False
+    
+
+def parse_instr_select_vector(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
+    def extra_cond_V(cond: str) -> List[str]:
+        if not is_vec_type(cond):
+            raise RuntimeError("The cond is not vector!")
+        conds = cond.strip("<").strip(">").strip().split(",")
+        conds = [conds[i].strip().split(" ")[1] for i in range(len(conds))]
+        return conds
+
+    _, cond, ty1, op1, ty2, op2 = (
+        data_token["selty"],
+        data_token["cond"],
+        data_token["ty1"],
+        data_token["op1"],
+        data_token["ty2"],
+        data_token["op2"],
+    )
+
+    conds = extra_cond_V(cond)
+    picking_value_list_1 = get_single_value(op1, smt_block, ty1)
+    picking_value_list_2 = get_single_value(op2, smt_block, ty2)
+    print("cond")
+    print(cond)
+    print("conds")
+    print(conds)
+    if not isinstance(picking_value_list_1, list) or not isinstance(
+        picking_value_list_2, list
+    ):
+        raise TypeError("The type of picking_value_list should be list")
+    assert (
+        len(conds) == len(picking_value_list_1)
+        and len(conds) == len(picking_value_list_2)
+        and "The len of three list is not same!"
+    )
+
+    value_res = []
+    for i in range(len(conds)):
+        if is_str_mean_true(conds[i]):
+            print(conds[i])
+            value_res.append(deepcopy(picking_value_list_1[i]))
+        else:
+            value_res.append(deepcopy(picking_value_list_2[i]))
+
+    smt_block.add_new_value(value_name, value_res, ty1)
+
+
+def parse_instr_select_simple(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
+    cond, ty1, op1, ty2, op2 = (
+        data_token["cond"],
+        data_token["ty1"],
+        data_token["op1"],
+        data_token["ty2"],
+        data_token["op2"],
+    )
+
+    flag = is_str_mean_true(cond)
+    if flag:
+        res = get_single_value(op1, smt_block, ty1)
+    else:
+        res = get_single_value(op2, smt_block, ty2)
+
+    smt_block.add_new_value(value_name, res, ty1)
+
+
+def parse_instr_select(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationContext,
+    instr_infoDict: Dict | None = None,
+):
+    # TODO: We have not taken triple vector into consideration.
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    if instr_infoDict == None:
+        instr_infoDict = get_instr_dict(instr, instr_type)
+    selty = instr_infoDict["selty"]
+
+    if is_vec_type(selty):
+        parse_instr_select_vector(name, instr_infoDict, smt_block)
+    else:
+        parse_instr_select_simple(name, instr_infoDict, smt_block)
+
+
 def parse_instr_extractvalue(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
@@ -1858,6 +1962,8 @@ def parse_instr(
         parse_instr_call(instr, instr_type, smt_block, instr_info_dict)
     elif is_aggregate_operations(instr_type):
         parse_instr_aggregate_operations(instr, instr_type, smt_block, instr_info_dict)
+    elif is_select_instr_type(instr_type):
+        parse_instr_select(instr, instr_type, smt_block, instr_info_dict)
     else:
         if not is_vectortype_basedon_dict_token(instr_info_dict, instr, instr_type):
             parse_instr_basic(instr, instr_type, smt_block, instr_info_dict)

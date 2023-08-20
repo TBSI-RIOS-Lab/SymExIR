@@ -156,7 +156,7 @@ def test_regex_sample():
     test_case_icmp = "icmp ne ptr %X, %X"
     test_case_fcmp = "fcmp one float 4.0, 5.0"
     test_case_select = (
-        "select <N x i1> true, i8 17, i8 42"  # This is not real instruction in LLVM.
+        "select <N x i1> <i1 true, i1 true>, <2 x i8> < i8 17, i8 42>, <2 x i8> < i8 17, i8 42>"  # This is not real instruction in LLVM.
     )
 
     test_case_store = "store i32 3, ptr %ptr"
@@ -381,9 +381,12 @@ def test_regex_sample():
     gs = parse.extra_slice_token(test_case_select, "select")
     assert gs != None
     assert gs["selty"] == "<N x i1>"
-    assert gs["cond"] == "true"
-    assert gs["ty"] == "i8"
-    assert gs["op1"] == "17"
+    assert gs["cond"] == "<i1 true, i1 true>"
+    assert gs["ty1"] == "<2 x i8>"
+    assert gs["op1"] == "< i8 17, i8 42>"
+    assert gs["ty2"] == "<2 x i8>"
+    assert gs["op2"] == "< i8 17, i8 42>"
+
 
     gs = parse.extra_slice_token(test_case_store, "store")
     assert gs != None
@@ -624,6 +627,14 @@ def test_parse_instr_vector_type():
     smt.dump_with_value_name()
 
 
+def test_parse_instr_select():
+    smt = st.VerificationContext()
+    test_instr_1 = "%1 = select <2 x i1> <i1 true, i1 false>, <2 x i8> < i8 1, i8 1>, <2 x i8> < i8 2, i8 2>"
+    test_instr_2 = "%2 = select i1 true, i8 1, i8 2"
+    parse.parse_instr(test_instr_1, "select", smt) 
+    parse.parse_instr(test_instr_2, "select", smt) 
+    smt.dump_with_value_name()
+
 def test_parse_instr_shufflevector():
     smt = st.VerificationContext()
     instr_1 = "%1 = shufflevector <2 x i32> < i32 1, i32 2>, <2 x i32> < i32 3, i32 4>, <3 x i32> <i32 0, i32 1, i32 2>"
@@ -680,3 +691,4 @@ if __name__ == "__main__":
     test_parse_instr_call()
     test_whole_proccess_1()
     test_parse_instr_vector_type()
+    test_parse_instr_select()
