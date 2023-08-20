@@ -61,6 +61,7 @@ CARE_OPCODE = {
     "addrspacecast",
     "icmp",
     "fcmp",
+    # over_bb_type
     "phi",
     "select",
     "freeze",
@@ -290,8 +291,8 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + " "
             + regex_fast_math_flag
             + "{0,8}"
-            + "(?P<selty><.*x.*>|.*?) "
-            + "(?P<cond>.*?), (?P<ty><.*x.*>|.*?) (?P<op1><.*>|.*?), (?P<ty><.*x.*>|.*?) (?P<op2><.*>|.*?)$"
+            + "(?P<selty><.*?x.*?>|.*?) "
+            + "(?P<cond><.*?>|.*?), (?P<ty1><.*? x .*?>|.*?) (?P<op1><.*>|.*?), (?P<ty2><.*? x .*?>|.*?) (?P<op2><.*>|.*?)$"
         )
 
     elif instr_type in simple_atomic_group:
@@ -401,10 +402,7 @@ def generate_instr_types(instrs: List[str]) -> List[str]:
 
 
 no_assert_group = {
-    "load",
-    "store",
-    "insertvalue",
-    "extractvalue",
+    # Terminator Instructions
     "ret",
     "br",
     "switch",
@@ -416,6 +414,19 @@ no_assert_group = {
     "catchret",
     "cleanupret",
     "unreachable",
+    "freeze",
+    "phi",
+    "va_arg",
+    "landingpad",
+    "catchpad",
+    "cleanuppad",
+    # Aggregate Operations
+    "insertvalue",
+    "extractvalue",
+    # Memory Access and Addressing Operations
+    "load",
+    "store",
+    
 }
 
 
