@@ -61,7 +61,6 @@ CARE_OPCODE = {
     "addrspacecast",
     "icmp",
     "fcmp",
-    # over_bb_type
     "phi",
     "select",
     "freeze",
@@ -72,7 +71,7 @@ CARE_OPCODE = {
     "cleanuppad",
 }
 
-NO_RETURN = {"store"}
+NO_RETURN = {"store", "fence"}
 
 terminator_instr_group = {
     "ret",
@@ -106,9 +105,6 @@ conversion_operations_group = {
     "fptosi",
     "uitofp",
     "sitofp",
-    "inttoptr",  # TODO: The "inttoptr" and "addrspacecast" need check!
-    "bitcast",
-    "ptrtoint",
 }
 
 """"
@@ -121,8 +117,7 @@ insertvalue_type = {"insertvalue"}
 icmp_group = {"icmp"}
 fcmp_group = {"fcmp"}
 select_type = {"select"}
-over_bb_type = {
-    "freeze",
+over_bb_group = {
     "phi",
     "va_arg",
     "landingpad",
@@ -130,8 +125,8 @@ over_bb_type = {
     "cleanuppad",
 }  # TODO: add description of getelementptr in document
 
-simple_atomic_group = {"fence"}
-memory_group = {"cmpxchg", "atomicrmw", "addrspacecast"}
+fence_instr_group = {"fence"}
+memory_group = {"cmpxchg", "atomicrmw"}
 store_type = {
     "store"
 }  # Actually for now the "store" is meaningless for the whole program, but we still finish that.
@@ -141,8 +136,8 @@ call_type = {"call"}
 getelementptr_type = {"getelementptr"}
 llvm_instr = {"llvm.minnum"}
 
-
-ptr_instr = {"ptrtoint", "bitcast", "inttoptr"}
+# TODO: add ptr
+ptr_instr_group = {"ptrtoint", "bitcast", "inttoptr", "addrspacecast"}
 
 regex_fast_math_flag = "(nnan |ninf |nsz |arcp |contract |afn |reassoc |fast )"
 regex_type_two_op_orv = (
@@ -295,11 +290,51 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
             + "(?P<cond><.*?>|.*?), (?P<ty1><.*? x .*?>|.*?) (?P<op1><.*>|.*?), (?P<ty2><.*? x .*?>|.*?) (?P<op2><.*>|.*?)$"
         )
 
-    elif instr_type in simple_atomic_group:
+    elif instr_type in fence_instr_group:
         pattern = re.compile("")
-
     elif instr_type in memory_group:
-        pattern = re.compile("")
+        # %old = atomicrmw add ptr %ptr, i32 1 acquire
+        if instr_type == "atomicrmw":
+            pattern = re.compile("^" + instr_type + ".*?, " + "(?P<ty>.*?) " + ".*?$")
+        # %val_success = cmpxchg ptr %ptr, i32 %cmp, i32 %squared acq_rel monotonic
+        elif instr_type == "cmpxchg":
+            pattern = re.compile("^" + instr_type + ".*?, " + "(?P<ty>.*?) " + ".*?$")
+
+    elif instr_type in ptr_instr_group:
+        # %X = ptrtoint ptr %P to i8
+        # %Z = ptrtoint <4 x ptr> <ptr 1, ptr 1, ptr 1, ptr 1> to <4 x i64>
+        if instr_type == "ptrtoint":
+            pattern = re.compile(
+                "^"
+                + instr_type
+                + " (?P<ptr_ty><.*? x .*?>|.*?) (?P<ptr_val><.*? x .*?>|.*?) to "
+                + "(?P<ty><.*? x .*?>|.*?)$"
+            )
+        # %X = inttoptr i32 255 to ptr
+        # %Z = inttoptr <4 x i32> <i32 1, i32 1, i32 1, i32 1> to <4 x ptr>
+        elif instr_type == "inttoptr":
+            pattern = re.compile(
+                "^"
+                + instr_type
+                + " (?P<ty><.*? x .*?>|.*?) (?P<val><.*? x .*?>|.*?) to "
+                + "(?P<ptr_ty><.*? x .*?>|.*?)"
+                + "(,.*?){0,1}$"
+            )
+        # %Y = bitcast i32* %x to i16*
+        # %Z = bitcast <2 x i32*> %V to <2 x i64*>
+        elif instr_type == "bitcast":
+            pattern = re.compile(
+                "^"
+                + instr_type
+                + " (?P<ptr_ty><.*? x .*?>|.*?) (?P<val><.*? x .*?>|.*?) to "
+                + "(?P<ty><.*? x .*?>|.*?)$"
+            )
+        # %X = addrspacecast ptr %x to ptr addrspace(1)
+        # %Z = addrspacecast <4 x ptr> %z to <4 x ptr addrspace(3)>
+        elif instr_type == "addrspacecast":
+            pattern = re.compile(
+                "^" + instr_type + " (?P<ptr_ty><.*? x .*?>|.*?) .*? to " + ".*?$"
+            )
 
     elif instr_type in store_type:
         # The type of the <pointer> operand must be a pointer to the first class type of the <value> operand
@@ -373,6 +408,26 @@ def get_instr_value_name(instr: str, instr_type: str):
         return "NoValueName"
 
 
+def is_instr_in_memory_group(instr_type):
+    return True if instr_type in memory_group else False
+
+
+def is_instr_in_ptr_instr_group(instr_type):
+    return True if instr_type in ptr_instr_group else False
+
+
+def is_instr_over_bb(instr_type):
+    return True if instr_type in over_bb_group else False
+
+
+def is_no_return_instr(instr_type: str):
+    return True if instr_type in NO_RETURN else False
+
+
+def is_termanitor_instr_type(instr_type):
+    return True if instr_type in terminator_instr_group else False
+
+
 def get_instr_dict(instr: str, instr_type: str):
     slice = instr.strip()
     if instr_type not in NO_RETURN:
@@ -426,8 +481,15 @@ no_assert_group = {
     # Memory Access and Addressing Operations
     "load",
     "store",
-    
+    "alloca",
+    "fence",
+    "cmpxchg",
+    "atomicrmw",
+    "getelementptr",
+    # other operation
 }
+
+ret_aggregate_instr_group = {"extractelement"}
 
 
 constraint_instr_type = {
@@ -435,15 +497,23 @@ constraint_instr_type = {
 }
 
 
-def is_assert_instr_type(instr_type: str):
+def is_no_new_value(instr_type) -> bool:
+    return (
+        True
+        if (instr_type in ret_aggregate_instr_group) or (instr_type in NO_RETURN)
+        else False
+    )
+
+
+def is_assert_instr_type(instr_type: str) -> bool:
     return False if instr_type in no_assert_group else True
 
 
-def is_constraint_type(instr_type: str):
+def is_constraint_type(instr_type: str) -> bool:
     return True if instr_type in constraint_instr_type else False
 
 
-def is_read_from_memory_instr_type(instr_type: str):
+def is_read_from_memory_instr_type(instr_type: str) -> bool:
     return True if instr_type in no_assert_group else False
 
 

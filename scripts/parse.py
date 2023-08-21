@@ -251,7 +251,7 @@ def get_info_from_vector_type(value_type: str) -> Tuple[int, str]:
     if search_result != None:
         return int(search_result["size"]), search_result["type"]
     else:
-        raise ValueError("The input vector type is wrong!\n")
+        raise ValueError("The input vector type({}) is wrong!\n".format(value_type))
 
 
 def get_smt_vector(value_name, vec_type):
@@ -626,8 +626,9 @@ def parse_instr_trunc(
 ):
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
-    assert get_type_precision(ty1) > get_type_precision(ty2)
+    ty1, val, ty2 = (data_token["ty1"], data_token["val"], data_token["ty2"])
+    if get_type_precision(ty1) <= get_type_precision(ty2):
+        raise ValueError("The ty1({}) is bigger than ty2({})".format(ty1, ty2))
     value = get_single_value(val, smt_block, ty1)
     precision_ty2 = get_type_precision(ty2)
     res = z3.simplify(z3.Extract(precision_ty2, 0, value))
@@ -645,7 +646,7 @@ def get_ext_smt_result(value, ty1: str, ty2: str, z3_function):
 def parse_instr_zext(
     value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    ty1, val, ty2 = data_token["ty1"], data_token["val"], data_token["ty2"]
     value = get_single_value(val, smt_block, ty1)
     res = get_ext_smt_result(value, ty1, ty2, z3.ZeroExt)
     smt_block.add_new_value(value_name, res, ty2)
@@ -654,7 +655,7 @@ def parse_instr_zext(
 def parse_instr_sext(
     value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    ty1, val, ty2 = data_token["ty1"], data_token["val"], data_token["ty2"]
     value = get_single_value(val, smt_block, ty1)
     res = get_ext_smt_result(value, ty1, ty2, z3.SignExt)
     smt_block.add_new_value(value_name, res, ty2)
@@ -666,7 +667,7 @@ def parse_instr_conversion(
     smt_block: st.VerificationContext,
     z3_function_conversion,
 ):
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    ty1, val, ty2 = data_token["ty1"], data_token["val"], data_token["ty2"]
     value = get_single_value(val, smt_block, ty1)
     sort = get_basic_smt_sort(ty2)
     res = z3.simplify(z3_function_conversion(value, sort))
@@ -1456,7 +1457,7 @@ def parse_instr_trunc_vec(
 ):
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    ty1, val, ty2 = data_token["ty1"], data_token["val"], data_token["ty2"]
     assert is_vec_type(ty1) and is_vec_type(ty2)
     ty1_var_size, ty1_var_type = get_info_from_vector_type(ty1)
     ty2_var_size, ty2_var_type = get_info_from_vector_type(ty2)
@@ -1473,7 +1474,7 @@ def parse_instr_trunc_vec(
 def parse_instr_zext_vec(
     value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    ty1, val, ty2 = (data_token["ty1"], data_token["val"], data_token["ty2"])
     assert is_vec_type(ty1) and is_vec_type(ty2)
     ty1_var_size, ty1_var_type = get_info_from_vector_type(ty1)
     ty2_var_size, ty2_var_type = get_info_from_vector_type(ty2)
@@ -1490,7 +1491,7 @@ def parse_instr_zext_vec(
 def parse_instr_sext_vec(
     value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
-    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    ty1, val, ty2 = data_token["ty1"], data_token["val"], data_token["ty2"]
     assert is_vec_type(ty1) and is_vec_type(ty2)
     ty1_var_size, ty1_var_type = get_info_from_vector_type(ty1)
     ty2_var_size, ty2_var_type = get_info_from_vector_type(ty2)
@@ -1607,10 +1608,6 @@ instr_function_vector_dict = {
 }
 
 
-def is_no_return_instr(instr_type: str):
-    return True if instr_type == "store" else False
-
-
 def is_aggregate_operations(instr_type: str):
     return (
         True
@@ -1621,6 +1618,10 @@ def is_aggregate_operations(instr_type: str):
 
 def parse_instr_no_return():
     pass
+
+
+def parse_instr_terminatior():
+    assert False and "The terminator instruction is over this scipt"
 
 
 def is_vectortype_instr(instr_type: str):
@@ -1681,7 +1682,7 @@ def is_str_mean_true(input_str: str) -> bool:
 
 def is_select_instr_type(instr_type):
     return True if instr_type == "select" else False
-    
+
 
 def parse_instr_select_vector(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
@@ -1705,10 +1706,6 @@ def parse_instr_select_vector(
     conds = extra_cond_V(cond)
     picking_value_list_1 = get_single_value(op1, smt_block, ty1)
     picking_value_list_2 = get_single_value(op2, smt_block, ty2)
-    print("cond")
-    print(cond)
-    print("conds")
-    print(conds)
     if not isinstance(picking_value_list_1, list) or not isinstance(
         picking_value_list_2, list
     ):
@@ -1722,7 +1719,6 @@ def parse_instr_select_vector(
     value_res = []
     for i in range(len(conds)):
         if is_str_mean_true(conds[i]):
-            print(conds[i])
             value_res.append(deepcopy(picking_value_list_1[i]))
         else:
             value_res.append(deepcopy(picking_value_list_2[i]))
@@ -1750,6 +1746,171 @@ def parse_instr_select_simple(
     smt_block.add_new_value(value_name, res, ty1)
 
 
+def parse_instr_atomicrmw(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
+    value_type = data_token["ty"]
+    smt_block.add_new_value(value_name, None, value_type)
+
+
+def parse_instr_cmpxchg(
+    value_name: str, data_token: Dict, smt_block: st.VerificationContext
+):
+    value_type = data_token["ty"]
+    smt_block.add_new_value(value_name, None, value_type)
+
+
+# NOTE: The return value of cmpxchg is simplified to a single value,
+# since the i1 means nothing to us.
+instr_function_mem = {
+    "cmpxchg": parse_instr_cmpxchg,
+    "atomicrmw": parse_instr_atomicrmw,
+}
+
+
+def parse_instr_mem(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationContext,
+    instr_infoDict: Dict | None = None,
+):
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    if instr_infoDict == None:
+        instr_infoDict = get_instr_dict(instr, instr_type)
+    instr_function_mem[instr_type](name, instr_infoDict, smt_block)
+
+
+def parse_instr_same_type_conversion_vector(
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
+):
+    ty1, val, ty2 = (data_token["ty1"], data_token["val"], data_token["ty2"])
+    assert is_vec_type(ty1) and is_vec_type(ty2)
+    _, ty1_var_type = get_info_from_vector_type(ty1)
+    _, ty2_var_type = get_info_from_vector_type(ty2)
+    assert get_type_precision(ty1_var_type) == get_type_precision(ty2_var_type)
+    value = get_single_value(val, smt_block, ty1)
+    assert isinstance(value, List)
+    res = value
+    smt_block.add_new_value(value_name, res, ty2)
+
+
+def parse_instr_same_type_conversion(
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
+):
+    ty1, val, ty2 = {data_token["ty1"], data_token["val"], data_token["ty2"]}
+    assert get_type_precision(ty1) == get_type_precision(ty2)
+    value = get_single_value(val, smt_block, ty1)
+    res = value
+    smt_block.add_new_value(value_name, res, ty2)
+
+
+def parse_instr_int_conversion(
+    value_name: str,
+    data_token: Dict[str, str],
+    smt_block: st.VerificationContext,
+    source_ty,
+    aim_ty,
+):
+    if is_vec_type(source_ty):
+        inner_type_ain_one = get_vector_inner_type(source_ty)
+        inner_type_aim_two = get_vector_inner_type(aim_ty)
+        aim_p_one = get_type_precision(inner_type_aim_two)
+        aim_p_two = get_type_precision(inner_type_ain_one)
+        if aim_p_one > aim_p_two:
+            parse_instr_zext_vec(value_name, data_token, smt_block)
+        elif aim_p_two > aim_p_one:
+            parse_instr_trunc_vec(value_name, data_token, smt_block)
+        else:
+            parse_instr_same_type_conversion_vector(value_name, data_token, smt_block)
+    else:
+        aim_p_one = get_type_precision(aim_ty)
+        aim_p_two = get_type_precision(source_ty)
+        if aim_p_one > aim_p_two:
+            parse_instr_zext(value_name, data_token, smt_block)
+        elif aim_p_two > aim_p_one:
+            parse_instr_trunc(value_name, data_token, smt_block)
+        else:
+            parse_instr_same_type_conversion(value_name, data_token, smt_block)
+
+
+def parse_instr_ptrtoint(
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
+):
+    source_ty, aim_ty, val = (
+        data_token["ptr_ty"],
+        data_token["ty"],
+        data_token["ptr_val"],
+    )
+    new_data_token = {"ty1": source_ty, "ty2": aim_ty, "val": val}
+    parse_instr_int_conversion(value_name, new_data_token, smt_block, source_ty, aim_ty)
+
+
+def parse_instr_inttoptr(
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
+):
+    source_ty, aim_ty, val = data_token["ty"], data_token["ptr_ty"], data_token["val"]
+    new_data_token = {"ty1": source_ty, "ty2": aim_ty, "val": val}
+    parse_instr_int_conversion(value_name, new_data_token, smt_block, source_ty, aim_ty)
+
+
+def parse_instr_add_None_smt(
+    value_name: str, value_type: str, smt_block: st.VerificationContext
+):
+    if is_vec_type(value_type):
+        aim_tmp_type_list = value_type.strip("<").strip(">").split("x")
+        aim_tmp_type_list = [
+            aim_tmp_type_list[i].strip() for i in range(len(aim_tmp_type_list))
+        ]
+        inner_type = aim_tmp_type_list[-1]
+        if inner_type.endswith("*"):
+            inner_type = "ptr"
+        final_type = "<" + aim_tmp_type_list[0] + " x " + inner_type + ">"
+        smt_block.add_new_value(value_name, None, final_type)
+    else:
+        smt_block.add_new_value(value_name, None, value_type)
+
+
+def parse_instr_bitcast(
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
+):
+    aim_type = data_token["ty"]
+    parse_instr_add_None_smt(value_name, aim_type, smt_block)
+
+
+def parse_instr_addrspacecast(
+    value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
+):
+    aim_type = data_token["ptr_ty"]
+    parse_instr_add_None_smt(value_name, aim_type, smt_block)
+
+
+instr_function_ptrInvolved = {
+    "ptrtoint": parse_instr_ptrtoint,
+    "bitcast": parse_instr_bitcast,
+    "inttoptr": parse_instr_inttoptr,
+    "addrspacecast": parse_instr_addrspacecast,
+}
+
+
+def parse_instr_ptrInvolved(
+    instr: str,
+    instr_type: str,
+    smt_block: st.VerificationContext,
+    instr_infoDict: Dict | None = None,
+):
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    instr = instr.strip()
+    name = re.split("=", instr)[0].strip(" ")
+    if instr_infoDict == None:
+        instr_infoDict = get_instr_dict(instr, instr_type)
+    instr_function_ptrInvolved[instr_type](name, instr_infoDict, smt_block)
+
+
+# TODO: We have not taken triple vector into consideration.
 def parse_instr_select(
     instr: str,
     instr_type: str,
@@ -1771,59 +1932,12 @@ def parse_instr_select(
         parse_instr_select_simple(name, instr_infoDict, smt_block)
 
 
-def parse_instr_extractvalue(
-    value_name: str, data_token: Dict, smt_block: st.VerificationContext
-):
-    if data_token == None or "type" not in data_token.keys():
-        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
-
-    type_list = data_token["type"].strip(" ").strip("{").strip("}").split(",")
-    type_list = [type_list[i].strip(" ") for i in range(len(type_list))]
-
-    idx = data_token["idx"]
-    if is_number(idx):
-        idx = int(data_token["idx"])
-    else:
-        raise RuntimeError("The idx is not what we expected.")
-
-    if idx > len(type_list):
-        raise OverflowError("")
-
-    type_extra = type_list[idx]
-    if not smt_block.is_there_same_value(value_name):
-        if is_simple_type(type_extra):
-            value = get_basic_smt_value(value_name, type_extra)
-            smt_block.add_new_value(value_name, value, type_extra)
-        elif is_vec_type(type_extra):
-            value = get_smt_vector(value_name, type_extra)
-            smt_block.add_new_value(value_name, value, type_extra)
-    else:
-        raise RuntimeError(
-            "There is already a same value({}) in smt!".format(value_name)
-        )
-
-
 class aggregate_type:
     def __init__(self) -> None:
         pass
 
     def __str__(self) -> str:
         return "aggregate_type do nothing...."
-
-
-def parse_instr_insertvalue(
-    value_name: str, data_token: Dict, smt_block: st.VerificationContext
-):
-    if data_token == None or "type" not in data_token.keys():
-        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
-    value = aggregate_type()
-    smt_block.add_new_value(value_name, value, "aggregate_type")
-
-
-instr_function_aggregate_operations = {
-    "extractvalue": parse_instr_extractvalue,
-    "insertvalue": parse_instr_insertvalue,
-}
 
 
 def parse_instr_aggregate_operations(
@@ -1946,6 +2060,9 @@ def parse_instr_vector(
 
 
 # TODO: add filter.
+# TODO: support for extractvalue, cmpxchg, atomicrmw ptrtoint
+
+
 def parse_instr(
     instr: str,
     instr_type: str,
@@ -1956,6 +2073,10 @@ def parse_instr(
         instr_info_dict = get_instr_dict(instr, instr_type)
     if is_no_return_instr(instr_type):
         parse_instr_no_return()
+    elif is_termanitor_instr_type(instr_type):
+        parse_instr_terminatior()
+    elif is_instr_over_bb(instr_type):
+        pass
     elif is_vectortype_instr(instr_type):
         parse_instr_vector_type(instr_type, instr, smt_block, instr_info_dict)
     elif is_call_instr(instr_type):
@@ -1964,6 +2085,10 @@ def parse_instr(
         parse_instr_aggregate_operations(instr, instr_type, smt_block, instr_info_dict)
     elif is_select_instr_type(instr_type):
         parse_instr_select(instr, instr_type, smt_block, instr_info_dict)
+    elif is_instr_in_memory_group(instr_type):
+        parse_instr_mem(instr, instr_type, smt_block, instr_info_dict)
+    elif is_instr_in_ptr_instr_group(instr_type):
+        parse_instr_ptrInvolved(instr, instr_type, smt_block, instr_info_dict)
     else:
         if not is_vectortype_basedon_dict_token(instr_info_dict, instr, instr_type):
             parse_instr_basic(instr, instr_type, smt_block, instr_info_dict)

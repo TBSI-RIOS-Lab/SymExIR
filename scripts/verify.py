@@ -5,6 +5,7 @@ from util import (
     get_vector_inner_type,
     is_assert_instr_type,
     is_constraint_type,
+    is_no_new_value,
     is_read_from_memory_instr_type,
     is_vec_type,
 )
@@ -54,6 +55,7 @@ def smt_add_constraint(
     else:
         raise RuntimeError("Over type({})!".format(value_type))
 
+
 # TODO: add 0xffff type..
 def verify(
     verify_info: VerificationLaodInfo,
@@ -89,7 +91,8 @@ def verify(
         # replace the val with a value.
         vec_flag = ps.is_vec_type(value_type)
         new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
-        smt.repalce_new_value(value_name, new_value)
+        if not is_no_new_value(instr_type):
+            smt.repalce_new_value(value_name, new_value)
     # smt.dump()
 
 
