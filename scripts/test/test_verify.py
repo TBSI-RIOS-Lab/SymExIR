@@ -109,8 +109,9 @@ test_case_vector_llvm_1 = [
 
 test_case_vector_llvm_1_info = [
     (0, "< i32 1, i32 1, i32 1>"),
-    (1, "< i32 1, i32 1, i32 1>"), 
+    (1, "< i32 1, i32 1, i32 1>"),
 ]
+
 
 def test_verify_simple_1():
     load_info = st.LoadAssertInfo(test_case_int_simple_1_info)

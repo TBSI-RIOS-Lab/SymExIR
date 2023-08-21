@@ -155,15 +155,12 @@ def test_regex_sample():
 
     test_case_icmp = "icmp ne ptr %X, %X"
     test_case_fcmp = "fcmp one float 4.0, 5.0"
-    test_case_select = (
-        "select <N x i1> <i1 true, i1 true>, <2 x i8> < i8 17, i8 42>, <2 x i8> < i8 17, i8 42>"  # This is not real instruction in LLVM.
-    )
+    test_case_select = "select <N x i1> <i1 true, i1 true>, <2 x i8> < i8 17, i8 42>, <2 x i8> < i8 17, i8 42>"  # This is not real instruction in LLVM.
 
     test_case_store = "store i32 3, ptr %ptr"
     test_case_store_float = "store double %7, double* %5, align 8, !tbaa !4"
     test_case_alloca = "alloca i32"
     test_case_alloca_align = "alloca i32, i32 4, align 1024"
-    test_case_atomicrmw = "atomicrmw add ptr %ptr, i32 1"
     test_case_load = "load i32, ptr %ptr"
     test_case_load_v = "load <3 x i1>, <3 x i1>* %1, align 8"
     test_case_call_1 = "call i8 @llvm.smax.i8(i8 42, i8 -24)"
@@ -173,6 +170,21 @@ def test_regex_sample():
     )
     test_case_insertvalue = "insertvalue {i32, float} undef, i32 1, 0"
     test_case_extractvalue = "extractvalue {i32, float} %agg, 0"
+
+    test_case_atomicrmw = "atomicrmw add ptr %ptr, i32 1 acquire"
+    test_case_cmpxchg = "cmpxchg ptr %ptr, i32 %cmp, i32 %squared acq_rel monotonic"
+    test_case_ptrtoint = "ptrtoint ptr %P to i8"
+    test_case_ptrtoint_vector = (
+        "ptrtoint <4 x ptr> < ptr 1, ptr 1, ptr 1, ptr 1> to <4 x i64>"
+    )
+    test_case_inttoptr = "inttoptr i32 255 to ptr"
+    test_case_inttoptr_vector = (
+        "inttoptr <4 x i32> < i32 1, i32 1, i32 1, i32 1> to <4 x ptr>"
+    )
+    test_case_bitcast = "bitcast i32* %x to i16*"
+    test_case_bitcast_vec = "bitcast <2 x i32*> %V to <2 x i64*>"
+    test_case_addrspacecast = "addrspacecast ptr %x to ptr addrspace(1)"
+    test_case_addrspacecast_vec = "addrspacecast <4 x ptr> %z to <4 x ptr addrspace(3)>"
 
     gs: re.Match[str] | None = parse.extra_slice_token(test_case_fneg, "fneg")
     assert gs != None
@@ -387,7 +399,6 @@ def test_regex_sample():
     assert gs["ty2"] == "<2 x i8>"
     assert gs["op2"] == "< i8 17, i8 42>"
 
-
     gs = parse.extra_slice_token(test_case_store, "store")
     assert gs != None
     assert gs["ty"] == "i32"
@@ -411,10 +422,6 @@ def test_regex_sample():
     assert gs != None
     assert gs["ty"] == "i32"
     assert gs["align"] == "1024"
-
-    gs = parse.extra_slice_token(test_case_atomicrmw, "atomicrmw")
-    assert gs != None
-    assert len(gs.groupdict()) == 0
 
     gs = parse.extra_slice_token(test_case_load, "load")
     assert gs != None
@@ -447,6 +454,56 @@ def test_regex_sample():
     assert gs["type"] == "{i32, float}"
     assert gs["op_val"] == "%agg"
     assert gs["idx"] == "0"
+
+    gs = parse.extra_slice_token(test_case_atomicrmw, "atomicrmw")
+    assert gs != None
+    assert gs["ty"] == "i32"
+
+    gs = parse.extra_slice_token(test_case_cmpxchg, "cmpxchg")
+    assert gs != None
+    assert gs["ty"] == "i32"
+
+    gs = parse.extra_slice_token(test_case_ptrtoint, "ptrtoint")
+    assert gs != None
+    assert gs["ptr_ty"] == "ptr"
+    assert gs["ty"] == "i8"
+
+    gs = parse.extra_slice_token(test_case_ptrtoint_vector, "ptrtoint")
+    assert gs != None
+    assert gs["ptr_val"] == "< ptr 1, ptr 1, ptr 1, ptr 1>"
+    assert gs["ty"] == "<4 x i64>"
+
+    gs = parse.extra_slice_token(test_case_inttoptr, "inttoptr")
+    assert gs != None
+    assert gs["ty"] == "i32"
+    assert gs["val"] == "255"
+    assert gs["ptr_ty"] == "ptr"
+
+    gs = parse.extra_slice_token(test_case_inttoptr_vector, "inttoptr")
+    assert gs != None
+    assert gs["ty"] == "<4 x i32>"
+    assert gs["val"] == "< i32 1, i32 1, i32 1, i32 1>"
+    assert gs["ptr_ty"] == "<4 x ptr>"
+
+    gs = parse.extra_slice_token(test_case_bitcast, "bitcast")
+    assert gs != None
+    assert gs["ty"] == "i16*"
+    assert gs["val"] == "%x"
+    assert gs["ptr_ty"] == "i32*"
+
+    gs = parse.extra_slice_token(test_case_bitcast_vec, "bitcast")
+    assert gs != None
+    assert gs["ty"] == "<2 x i64*>"
+    assert gs["val"] == "%V"
+    assert gs["ptr_ty"] == "<2 x i32*>"
+
+    gs = parse.extra_slice_token(test_case_addrspacecast, "addrspacecast")
+    assert gs != None
+    assert gs["ptr_ty"] == "ptr"
+
+    gs = parse.extra_slice_token(test_case_addrspacecast_vec, "addrspacecast")
+    assert gs != None
+    assert gs["ptr_ty"] == "<4 x ptr>"
 
 
 def test_get_smt_vector():
@@ -624,16 +681,17 @@ def test_parse_instr_vector_type():
     instr_2 = "%2 = insertelement <4 x float> < float 3.01, float 2.0, float 3.0, float 4.0>, float 1, i32 0 "
     parse.parse_instr(instr_1, "extractelement", smt)
     parse.parse_instr(instr_2, "insertelement", smt)
-    smt.dump_with_value_name()
+    # smt.dump_with_value_name()
 
 
 def test_parse_instr_select():
     smt = st.VerificationContext()
     test_instr_1 = "%1 = select <2 x i1> <i1 true, i1 false>, <2 x i8> < i8 1, i8 1>, <2 x i8> < i8 2, i8 2>"
     test_instr_2 = "%2 = select i1 true, i8 1, i8 2"
-    parse.parse_instr(test_instr_1, "select", smt) 
-    parse.parse_instr(test_instr_2, "select", smt) 
-    smt.dump_with_value_name()
+    parse.parse_instr(test_instr_1, "select", smt)
+    parse.parse_instr(test_instr_2, "select", smt)
+    # smt.dump_with_value_name()
+
 
 def test_parse_instr_shufflevector():
     smt = st.VerificationContext()
@@ -657,6 +715,41 @@ def test_parse_aggregate_operations():
     parse.parse_instr(instr_2, "insertvalue", smt)
     parse.parse_instr(instr_3, "insertvalue", smt)
     # smt.dump_with_type()
+
+
+def test_parse_instr_mem():
+    instr_1 = "%old = atomicrmw add ptr %ptr, i32 1 acquire"
+    instr_2 = (
+        "%val_success = cmpxchg ptr %ptr, i32 %cmp, i32 %squared acq_rel monotonic"
+    )
+
+    smt = st.VerificationContext()
+    parse.parse_instr(instr_1, "atomicrmw", smt)
+    parse.parse_instr(instr_2, "cmpxchg", smt)
+    # smt.dump()
+
+
+def test_parse_instr_ptrInvolved():
+    instr_1 = "%pt_1 = ptrtoint ptr 677 to i8"
+    instr_2 = "%pt_2 = ptrtoint <4 x ptr> <ptr 1, ptr 1, ptr 1, ptr 1> to <4 x i64>"
+    instr_3 = "%ip_1 = inttoptr i32 255 to ptr"
+    instr_4 = (
+        "%ip_2 = inttoptr <4 x i32> <i32 99, i32 1, i32 100, i32 393> to <4 x ptr>"
+    )
+    instr_5 = "%b_1 = bitcast <2 x i32*> %V to <2 x i64*>"
+    instr_6 = "%b_2 = bitcast <2 x i32*> %V to <2 x i64*>"
+    instr_7 = "%X = addrspacecast ptr %x to ptr addrspace(1)"
+    instr_8 = "%Z = addrspacecast <4 x ptr> %z to <4 x ptr addrspace(3)>"
+    smt = st.VerificationContext()
+    parse.parse_instr(instr_1, "ptrtoint", smt)
+    parse.parse_instr(instr_2, "ptrtoint", smt)
+    parse.parse_instr(instr_3, "inttoptr", smt)
+    parse.parse_instr(instr_4, "inttoptr", smt)
+    parse.parse_instr(instr_5, "bitcast", smt)
+    parse.parse_instr(instr_6, "bitcast", smt)
+    parse.parse_instr(instr_7, "addrspacecast", smt)
+    parse.parse_instr(instr_8, "addrspacecast", smt)
+    smt.dump()
 
 
 def test_whole_proccess_1():
@@ -692,3 +785,5 @@ if __name__ == "__main__":
     test_whole_proccess_1()
     test_parse_instr_vector_type()
     test_parse_instr_select()
+    test_parse_instr_mem()
+    test_parse_instr_ptrInvolved()

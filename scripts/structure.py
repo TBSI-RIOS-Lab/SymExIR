@@ -216,7 +216,7 @@ class VerificationContext:
     def dump(self):
         for key in self.var2list.keys():
             loc = self.var2list[key]
-            print(str(self.smt_list[loc]))
+            print(str(key), self.var2type[key], str(self.smt_list[loc]))
 
     def dump_with_type(self):
         for key in self.var2list.keys():
@@ -224,15 +224,15 @@ class VerificationContext:
             print(str(self.smt_list[loc]), self.var2type[key])
 
     def dump_with_value_name(self):
-        for key in self.var2list.keys():        
+        for key in self.var2list.keys():
             loc = self.var2list[key]
             print(str(key), str(self.smt_list[loc]))
 
     def dump_with_valueName_type(self):
-        for key in self.var2list.keys():        
+        for key in self.var2list.keys():
             loc = self.var2list[key]
             print(str(key), str(self.smt_list[loc]))
-            
+
     def repalce_new_value(self, name: str, value):
         list_loc = self.var2list[name]
         self.smt_list[list_loc] = value
