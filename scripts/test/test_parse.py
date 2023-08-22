@@ -749,7 +749,7 @@ def test_parse_instr_ptrInvolved():
     parse.parse_instr(instr_6, "bitcast", smt)
     parse.parse_instr(instr_7, "addrspacecast", smt)
     parse.parse_instr(instr_8, "addrspacecast", smt)
-    smt.dump()
+    # smt.dump()
 
 
 def test_whole_proccess_1():

@@ -497,7 +497,7 @@ constraint_instr_type = {
 }
 
 
-def is_no_new_value(instr_type) -> bool:
+def no_assertion_value(instr_type) -> bool:
     return (
         True
         if (instr_type in ret_aggregate_instr_group) or (instr_type in NO_RETURN)
@@ -511,11 +511,6 @@ def is_assert_instr_type(instr_type: str) -> bool:
 
 def is_constraint_type(instr_type: str) -> bool:
     return True if instr_type in constraint_instr_type else False
-
-
-def is_read_from_memory_instr_type(instr_type: str) -> bool:
-    return True if instr_type in no_assert_group else False
-
 
 # def get_instr_return_type(instr: str, instr_type: str, instr_info: Dict) -> str:
 #     if instr_info == None:

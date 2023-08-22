@@ -5,8 +5,7 @@ from util import (
     get_vector_inner_type,
     is_assert_instr_type,
     is_constraint_type,
-    is_no_new_value,
-    is_read_from_memory_instr_type,
+    no_assertion_value,
     is_vec_type,
 )
 
@@ -32,9 +31,11 @@ def smt_add_constraint(
     solver: z3.Solver,
 ):
     # vector type
+    assert_waitint_value = smt.get_value_by_name(name)
+    if assert_waitint_value == None:
+        raise ValueError("Wow we get the empty value here!")
     if is_vec_type(value_type):
         assert_value_input = ps.get_smt_val_vector(value, value_type)
-        assert_waitint_value = smt.get_value_by_name(name)
         if not len(assert_value_input) == len(assert_waitint_value):
             raise RuntimeError(
                 "The input({}) vector is not same length as the one in smt!".format(
@@ -47,11 +48,11 @@ def smt_add_constraint(
 
     ## normal value
     if ps.get_inner_type(value_type) == DataType.IntegerType:
-        solver.add(smt.get_value_by_name(name) == int(value))
+        solver.add(assert_waitint_value == int(value))
     elif ps.get_inner_type(value_type) == DataType.BooleanType:
         pass  # TODO: raise error or not?
     elif ps.get_inner_type(value_type) == DataType.FloatingType:
-        solver.add(smt.get_value_by_name(name) == float(value))
+        solver.add(assert_waitint_value == float(value))
     else:
         raise RuntimeError("Over type({})!".format(value_type))
 
@@ -71,15 +72,19 @@ def verify(
 
         if value_name == "NoValueName":
             pass
-
         ps.parse_instr(instrs[loc], instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
         assert_value_str = load_info.get_value_str(loc)
-        if is_assert_instr_type(instr_type):
+        if is_assert_instr_type(
+            instr_type
+        ):  # TODO: For the call function not implemented, this is meanningless
             if verify_mode:
-                smt_add_constraint(
-                    assert_value_str, value_type, smt, value_name, solver
-                )
+                try:
+                    smt_add_constraint(
+                        assert_value_str, value_type, smt, value_name, solver
+                    )
+                except ValueError:
+                    print("Here happend empty value in {}".format(value_type))
             if solver.check() != z3.sat:
                 smt.dump()
                 raise RuntimeError(
@@ -89,9 +94,9 @@ def verify(
                 )
 
         # replace the val with a value.
-        vec_flag = ps.is_vec_type(value_type)
-        new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
-        if not is_no_new_value(instr_type):
+        if not no_assertion_value(instr_type) or ps.is_supported_resty(value_type):
+            vec_flag = ps.is_vec_type(value_type)
+            new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
             smt.repalce_new_value(value_name, new_value)
     # smt.dump()
 
@@ -108,7 +113,7 @@ def generate_calculate_result(
             pass
         ps.parse_instr(instrs[loc], instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
-        if is_read_from_memory_instr_type(instr_type):
+        if not no_assertion_value(instr_type) or ps.is_supported_resty(value_type):
             assert_value_str = load_info.get_value_str(loc)
             vec_flag = ps.is_vec_type(value_type)
             new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
