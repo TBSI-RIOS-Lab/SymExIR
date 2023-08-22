@@ -962,6 +962,12 @@ def parse_instr_llvm_single_argument(
     smt_block.add_new_value(value_name, res, rs_ty)
 
 
+def parse_callFunc_empty(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    smt_block.add_new_value(value_name, None, rs_ty)
+
+
 def parse_instr_llvm_abs(
     value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
@@ -1074,6 +1080,10 @@ def get_right_key(function_str: str):
     return None
 
 
+def is_supported_resty(res_ty):
+    return True if is_vec_type(res_ty) or res_ty in Name2Type.keys() else False
+
+
 def parse_instr_call(
     instr: str,
     instr_type: str,
@@ -1086,11 +1096,15 @@ def parse_instr_call(
         instr_infoDict = get_instr_dict(instr, instr_type)
     assert instr_infoDict != None
     re_type = instr_infoDict["ty"]
+    if not is_supported_resty(re_type):
+        raise RuntimeError("The res_type({}) of call is not supported.".format(re_type))
     function_all_str = instr_infoDict["function"]
     function_name, argu = separate_function_and_argument(function_all_str)
     parse_function = get_right_key(function_name)
     if parse_function != None:
         parse_function(value_name, argu, re_type, smt_block)
+    else:
+        parse_callFunc_empty(value_name, argu, re_type, smt_block)
 
 
 instr_function_simple_dict = {
