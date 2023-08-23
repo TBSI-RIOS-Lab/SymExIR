@@ -1,5 +1,5 @@
+import decimal as dc
 import z3
-
 
 def test_list_z3():
     l: list = []
@@ -61,11 +61,22 @@ def test_z3_add():
 
 
 def test_float_val_z3_solver():
+    dc.getcontext().prec = 128
     solver = z3.Solver()
+    a = "1e2"
+    b = float(a)
+    c = dc.Decimal(a)
     x = z3.FPVal(20.0, z3.FPSort(8, 24))
     y = z3.FPVal(20.000000000001, z3.FPSort(8, 24))
     c = z3.fpAdd(z3.RTZ(), x, y)
+    z = z3.FPVal("12020000.10002", z3.FPSort(8, 24))
+    print(z)
     solver.add(c == 40.00000000000)
+    e = dc.Decimal("12323e222323")
+    
+    z = z3.FPVal("1.5258796215057373046875*(2**17)", z3.FPSort(8, 24))
+    print()
+    print(z)
     assert solver.check() == z3.sat
 
 
@@ -74,5 +85,5 @@ if __name__ == "__main__":
     # test_list_z3_1()
     # test_z3_reset()
     # test_z3_val()
-    test_z3_add()
+    # test_z3_add()
     test_float_val_z3_solver()
