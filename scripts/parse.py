@@ -44,10 +44,6 @@ class SliceToken:
         return self._slices
 
 
-def is_number(string):
-    pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
-    return bool(pattern.match(string))
-
 
 def get_opcode(s: str):
     """This function is not recommended since it lacks a
@@ -317,7 +313,7 @@ def get_nn_basedOn_type(
         return get_smt_val_vector(value, v_type)
     else:
         if not is_number(value):
-            raise TypeError("The value is not digit")
+            raise TypeError("The value({}) is not digit".format(value))
         value_number = eval(value)
         res = get_basic_smt_val(v_type, value_number)
         return res
@@ -333,6 +329,7 @@ def get_value_from_smt(one: str, smt_block: st.VerificationContext):
 
 def get_single_value(one: str, smt_block: st.VerificationContext, value_type: str):
     value_vec_type = is_vec_type(value_type)
+    one = one.strip()
     if one.startswith("%"):
         return get_value_from_smt(one, smt_block)
     else:
@@ -1038,7 +1035,7 @@ def parse_instr_llvm_cos(
     value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_single_argument(
-        value_name, argments, rs_ty, smt_block, uf.get_sin_result
+        value_name, argments, rs_ty, smt_block, uf.get_cos_result
     )
 
 
@@ -1206,6 +1203,7 @@ def parse_instr_call(
     smt_block: st.VerificationContext,
     instr_infoDict: Dict | None = None,
 ):
+    print(instr)
     """"""
     value_name = instr.split("=")[0].strip(" ")
     if instr_infoDict == None:

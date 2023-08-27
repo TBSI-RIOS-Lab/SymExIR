@@ -100,9 +100,7 @@ def test_separate_argument():
     res = parse.separate_argument(
         "<2 x i32> %3"
     )
-    print("res")
-    print(res)
-
+    
 def test_get_opcode():
     test_case_1 = "%10 = add i64 %9, %6"
     opcode = parse.get_opcode(test_case_1.split(",")[0])
@@ -671,11 +669,25 @@ def test_parse_instr_vector():
 
 def test_parse_instr_call():
     smt = st.VerificationContext()
-    parse.parse_instr_call("%1 = call i8 @llvm.smax.i8(i8 42, i8 -24)", "call", smt)
-    parse.parse_instr_call("%2 = call i8 @llvm.smin.i8(i8 42, i8 -24)", "call", smt)
-    parse.parse_instr_call("%3 = call i8 @llvm.umax.i8(i8 42, i8 -24)", "call", smt)
-    parse.parse_instr_call("%4 = call i8 @llvm.umin.i8(i8 42, i8 -24)", "call", smt)
-    # smt.dump()
+    test_case = [
+        "%1 = call i8 @llvm.smax.i8(i8 42, i8 -24)",
+        "%2 = call i8 @llvm.smin.i8(i8 42, i8 -24)",
+        "%3 = call i8 @llvm.umax.i8(i8 42, i8 -24)",
+        "%4 = call i8 @llvm.umin.i8(i8 42, i8 -24)",
+        "%5 = call float @llvm.sin.f32(float 2.33)",
+        "%6 = call float @llvm.cos.f32(float %5)",
+        "%7 = call float @llvm.exp.f32(float %5)",
+        "%8 = call float @llvm.exp2.f32(float %5)",
+        "%9 = call float @llvm.exp2.f32(float %8)",
+        "%10 = call float @llvm.log10.f32(float %8)",
+        "%11 = call float @llvm.log2.f32(float 23)",
+        "%12 = call float @llvm.trunc.f32(float 2.33)",
+        "%13 = call float @llvm.floor.f32(float 2.33)",
+        "%14 = call float @llvm.ceil.f32(float 2.33)",
+    ]
+    for i in range(len(test_case)):
+        parse.parse_instr(test_case[i], "call", smt)
+    smt.print_normal_float()
 
 
 def test_parse_instr_vector_type():

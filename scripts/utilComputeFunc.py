@@ -4,6 +4,8 @@ import regex as re
 import z3
 import mpmath as mp
 
+from util import is_number
+
 
 def is_normalizedFloatingPoint(inputStr: str):
     pattern = r"(?P<mantissa>\d+\.\d+)\*\(2\*\*(?P<exponent>\d+)\)"
@@ -13,22 +15,37 @@ def is_normalizedFloatingPoint(inputStr: str):
 
 def normalizedFloatingPoint_to_Decimal(inputStr: str):
     dc.getcontext().prec = 1024
-    pattern = r"(?P<mantissa>\d+\.\d+)\*\(2\*\*(?P<exponent>\d+)\)"
+    if "*" not in inputStr and is_number(inputStr):
+        return dc.Decimal(inputStr)
+    pattern = r"(?P<mantissa>\d+"
+    if "." in inputStr:
+        pattern += r"\.\d+)"
+    else:
+        pattern += r")"
+
+    if "-" in inputStr:
+        pattern += r"\*\(2\*\*(?P<exponent>-\d+)\)"
+    else:
+        pattern += r"\*\(2\*\*(?P<exponent>\d+)\)"
     match = re.match(pattern, inputStr)
     if not match:
-        raise ValueError("The inputStr({}) is not normalizedFloatingPoint!")
+        raise ValueError(
+            "The inputStr({}) is not normalizedFloatingPoint!".format(inputStr)
+        )
     else:
         mantissa = match["mantissa"]
         exponent = match["exponent"]
-        return dc.Decimal(mantissa) * (dc.Decimal(2) ** dc.Decimal(exponent))
+        return (
+            dc.Decimal(mantissa) * (dc.Decimal(2) ** dc.Decimal(exponent))
+            if exponent != None
+            else dc.Decimal(mantissa)
+        )
 
 
 def get_compute_result_single(input_number, func):
     if not isinstance(input_number, z3.FPRef):
         raise RuntimeError("The input({}) is not z3.FPVal".format(input_number))
-
-    input = str(input_number)
-    number_decimal = normalizedFloatingPoint_to_Decimal(input)
+    number_decimal = normalizedFloatingPoint_to_Decimal(str(input_number))
     res_decimal = func(number_decimal)
     return z3.FPVal(str(res_decimal), input_number.sort())
 
@@ -313,8 +330,10 @@ def log2(x):
     res = 0
     if isinstance(x, dc.Decimal):
         dc.getcontext().prec += 2
-        res = x.logb()
+        res = x.log10() / dc.Decimal(2).log10()
         dc.getcontext().prec -= 2
+        print("res")
+        print(res)
         return res
     else:
         raise RuntimeError("The input type is not Decimal!\n")
