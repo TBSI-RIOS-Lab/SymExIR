@@ -4,6 +4,7 @@ from typing import Dict, List
 import llvmlite.binding as llvm
 import z3
 from config import *
+from utilComputeFunc import normalizedFloatingPoint_to_Decimal
 from util import get_instr_dict, get_instr_type, get_instr_value_name
 
 uninplement_instr = [
@@ -217,6 +218,14 @@ class VerificationContext:
         for key in self.var2list.keys():
             loc = self.var2list[key]
             print(str(key), self.var2type[key], str(self.smt_list[loc]))
+
+    def print_normal_float(self):
+        for key in self.var2list.keys():
+            loc = self.var2list[key]
+            if not isinstance(self.smt_list[loc], z3.FPRef):
+                print(str(key), self.var2type[key], str(self.smt_list[loc]))     
+            else:
+                print(str(key), self.var2type[key], normalizedFloatingPoint_to_Decimal(str(self.smt_list[loc])))                   
 
     def dump_with_type(self):
         for key in self.var2list.keys():

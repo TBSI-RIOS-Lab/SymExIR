@@ -562,3 +562,7 @@ def get_vector_inner_type(value_type: str):
     v_type = value_type.strip("<").strip(">")
     v_type = v_type.split("x")[-1].strip()
     return v_type
+
+def is_number(string):
+    pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
+    return bool(pattern.match(string))
