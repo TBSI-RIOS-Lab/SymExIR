@@ -94,7 +94,14 @@ def test_separate_argument():
     res = parse.separate_argument(
         "<2 x i32> < i32 1, i32 2>, <2 x i32> < i32 1, i32 2>"
     )
-
+    res = parse.separate_argument(
+        "<2 x i32> %3, <2 x i32> %4"
+    )
+    res = parse.separate_argument(
+        "<2 x i32> %3"
+    )
+    print("res")
+    print(res)
 
 def test_get_opcode():
     test_case_1 = "%10 = add i64 %9, %6"

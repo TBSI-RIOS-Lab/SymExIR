@@ -9,6 +9,7 @@ import structure as st
 import z3
 import z3Extension as z3e
 from util import *
+import utilComputeFunc as uf
 
 
 class SliceToken:
@@ -946,9 +947,9 @@ def get_sqrt_result_single(val):
 
 def get_sqrt_result(val):
     if isinstance(val, List):
-        return [get_sqrt_result(val[i]) for i in range(len(val))]
+        return [get_sqrt_result_single(val[i]) for i in range(len(val))]
     else:
-        return get_sqrt_result(val)
+        return get_sqrt_result_single(val)
 
 
 def parse_instr_llvm_single_argument(
@@ -1025,6 +1026,121 @@ def parse_instr_llvm_llrint(
     )
 
 
+def parse_instr_llvm_sin(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_sin_result
+    )
+
+
+def parse_instr_llvm_cos(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_sin_result
+    )
+
+
+def parse_instr_llvm_exp(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_exp_result
+    )
+
+
+def parse_instr_llvm_exp2(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_exp2_result
+    )
+
+
+def parse_instr_llvm_log(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_log_result
+    )
+
+
+def parse_instr_llvm_log2(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_log2_result
+    )
+
+
+def parse_instr_llvm_log10(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_log10_result
+    )
+
+
+def parse_instr_llvm_floor(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_floor_result
+    )
+
+
+def parse_instr_llvm_ceil(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_ceil_result
+    )
+
+
+def parse_instr_llvm_nearbyint(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_nearbyint_result
+    )
+
+
+def parse_instr_llvm_trunc(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_trunc_result
+    )
+
+def parse_instr_llvm_round(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    parse_instr_llvm_single_argument(
+        value_name, argments, rs_ty, smt_block, uf.get_round_result
+    )
+
+def parse_instr_llvm_ldexp(
+    value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
+):
+    argus = separate_argument(argments)
+    assert len(argus) == 2
+    val_type_first, val_first = argus[0]
+    val_type_second, val_second = argus[1]
+    first = get_single_value(val_first, smt_block, val_type_first)
+    second = get_single_value(val_second, smt_block, val_type_second)
+    assert val_type_first == val_type_second
+    sort = get_basic_smt_sort(val_type_first)
+    if isinstance(first, List) and isinstance(second, List):
+        assert len(first) == len(second)
+        res = [
+            uf.get_ldexp_result_single(first[i], second[i]) for i in range(len(first))
+        ]
+    else:
+        res = get_minimum_float(first, second)
+    smt_block.add_new_value(value_name, res, rs_ty)
+
+
 def get_powi(number, power):
     "The number must be a float and the"
 
@@ -1043,25 +1159,25 @@ instr_call_function_dict = {
     "llvm.minimum": parse_instr_llvm_minimum,
     "llvm.maximum": parse_instr_llvm_maximum,
     "llvm.llrint": parse_instr_llvm_llrint,
+    "llvm.sin": parse_instr_llvm_sin,
+    "llvm.cos": parse_instr_llvm_cos,
+    "llvm.exp": parse_instr_llvm_exp,
+    "llvm.exp2": parse_instr_llvm_exp2,
+    "llvm.log": parse_instr_llvm_log,
+    "llvm.log10": parse_instr_llvm_log10,
+    "llvm.log2": parse_instr_llvm_log2,
+    "llvm.ldexp": parse_instr_llvm_ldexp,
+    "llvm.floor": parse_instr_llvm_floor,
+    "llvm.ceil": parse_instr_llvm_ceil,
+    "llvm.trunc": parse_instr_llvm_trunc,
+    "llvm.nearbyint": parse_instr_llvm_nearbyint,
+    "llvm.round": parse_instr_llvm_round,
 }
 
 # NOTE: These operations are not natively supported by z3.
 instr_call_function_dict_unimplemented = {
-    "llvm.sin",
-    "llvm.cos",
-    "llvm.exp",
-    "llvm.exp2",
-    "llvm.ldexp",
     "llvm.frexp",
-    "llvm.log",
-    "llvm.log10",
-    "llvm.log2",
-    "llvm.floor",
-    "llvm.ceil",
-    "llvm.trunc",
     "llvm.rint",
-    "llvm.nearbyint",
-    "llvm.round",
     "llvm.roundeven",
     "llvm.lround",
     "llvm.llround",  # TODO: declare i64 @llvm.lround.i64.f80(float %Val) Find wrong in https://llvm.org/docs/LangRef.html#llvm-minimum-intrinsic.
