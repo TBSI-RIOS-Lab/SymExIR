@@ -44,6 +44,119 @@ LLVMSymEx采取的约束求解器为[Z3](https://github.com/Z3Prover/z3)，Z3在
 
 在对LLVM IR指令进行转换并存储后，就能对其计算结果进行验证。而在结果验证阶段，LLVMSymEx并不不会保留长线条的计算过程，而是会在对计算结果进行验证后，将LLVM IR计算结果直接替换成应当验证的数值。这样的做法能够充分地利用验证的数据，不只能避免因为过长的计算路径带来的时间负担，同时也可以避免由于长链条的浮点计算引入越来愈大的误差。
 
+### 目前支持的数据类型与指令范围
+
+由于实现的复杂性与可行性，目前的LLVMSymEx能够支持的数据类型与指令（及LLVM内置函数）是有限的，并未做到完全支持。下面对其进行简介：
+
+首先需要明确的是，目前的LLVMSymEx支持进行计算的主要为LLVM Single Value Types，其中包括各类基础类型（i1..., f32...,ptr and etc.）及vector type与小部分Aggregate Types。
+以下的指令为全部按照LLVM instruction设计要求实现，通过测试验证了执行结果的一致性。
+```
+    "fneg",
+    "add",
+    "fadd",
+    "sub",
+    "fsub",
+    "mul",
+    "fmul",
+    "udiv",
+    "sdiv",
+    "fdiv",
+    "urem",
+    "srem",
+    "frem",
+    "shl",
+    "lshr",
+    "ashr",
+    "and",
+    "or",
+    "xor",
+    "extractelement",
+    "insertelement",
+    "shufflevector",
+    "cmpxchg",
+    "atomicrmw",
+    "trunc",
+    "zext",
+    "sext",
+    "fptrunc",
+    "fpext",
+    "fptoui",
+    "fptosi",
+    "uitofp",
+    "sitofp",
+    "ptrtoint",
+    "inttoptr",
+    "bitcast",
+    "icmp",
+    "fcmp",
+    "select",
+```
+`load`指令的实现则有些特殊，这是因为在实现上我们需要通过`load`指令加载预设置的数据，推动验证过程，所以`load`虽然提供了支持，但更加侧重于实现预设值到程序验证值的转换过程。
+
+以下的执行指令并没纳入实现过程，也无法进行数值的验证，这是因为这些指令都归属于Terminator Instructions。这些指令超出了BB块的验证范围，也没有计算的功能实现。
+```
+    "ret",
+    "br",
+    "switch",
+    "indirectbr",
+    "invoke",
+    "callbr",
+    "resume",
+    "catchswitch",
+    "catchret",
+    "cleanupret",
+    "unreachable",
+```
+针对以下的指令LLVMSymEx虽然并不提供验证能力，但仍然提供输入数据转换的能力，以保证整体的验证过程执行完整。原因是这些指令都与struct Type有关，超出了目前的实现范围。
+```
+    "insertvalue",
+    "extractvalue",
+```
+以下的执行指令并没纳入实现过程，也无法进行数值的验证，这是因为这些指令都归属于Memory Types。由于LLVMSymEx归属于静态验证工具，无法实际与内存进行交互，所有这些指令都完全无法实现。
+```
+    "alloca",
+    "store",
+    "fence",
+    "getelementptr",
+```
+以下的执行指令并没纳入实现过程，也无法进行数值的验证，这是因为这些指令与多线程实现或高级语言的异常实现有关，与计算过程无关，也不存在需要验证的数据。
+```
+    "freeze",
+    "va_arg",
+    "landingpad",
+    "catchpad",
+    "cleanuppad",
+```
+`call`指令的实现也是非常具有特点的，当前LLVMSymEx中的`call`指令仅能实现部分LLVM Intrinsic Functions的返回值处理，也就是下面展示的这些。而与LLVM Intrinsic Functions无关的`call`指令则是完全无法实现，当然也不能提供数值的验证，但针对部分返回值为LLVM内置类型的指令而言，LLVMSymEx也提供了外部数据的转换能力，加强数值验证的完整性。需要强调的是，LLVM存在大量的内置函数与内存，指令集与复杂数据类型有关，超出了目前的支持范围，但在未来会尽可能地提供更加丰富的支持。
+```
+    "llvm.abs",
+    "llvm.smax",
+    "llvm.umax",
+    "llvm.smin",
+    "llvm.umin",
+    "llvm.sqrt",
+    "llvm.fma",
+    "llvm.fabs",
+    "llvm.minnum",
+    "llvm.maxnum",
+    "llvm.minimum",
+    "llvm.maximum",
+    "llvm.llrint",
+    "llvm.sin",
+    "llvm.cos",
+    "llvm.exp",
+    "llvm.exp2",
+    "llvm.log",
+    "llvm.log10",
+    "llvm.log2",
+    "llvm.ldexp",
+    "llvm.floor",
+    "llvm.ceil",
+    "llvm.trunc",
+    "llvm.nearbyint",
+    "llvm.round",
+```
+
 ### Float Value Tolerance
 
 由于浮点数计算的精确结果会因为浮点数的精度，执行程序的编写与执行计算单元的架构设计而发生变化。LLVMSymEx的计算依赖SMT Solver同样会因为以上的原因而产生波动，这些波动是需要在验证浮点数过程中纳入考虑的。LLVMSymEx为其做出了两点努力，一是，在验证时将允许一定的浮点数误差；二是，在单个value在验证结束后，将其替换成一个固定的数字，阻断过长的计算链条而带来不断越来越大的计算误差。
