@@ -135,7 +135,6 @@ def test_verify_simple_3():
     v_info = st.VerificationLaodInfo(test_case_int_simple_3, load_info)
     verify.verify(v_info, load_info)
 
-
 def test_verify_int_vector_1():
     load_info = st.LoadAssertInfo(test_case_int_vector_1_info)
     v_info = st.VerificationLaodInfo(test_case_int_vector_1, load_info)
@@ -145,8 +144,8 @@ def test_verify_int_vector_1():
 def test_calculate_simple_3():
     load_info = st.LoadAssertInfo(test_case_int_simple_3_info)
     v_info = st.VerificationLaodInfo(test_case_int_simple_3, load_info)
-    verify.generate_calculate_result(v_info, load_info)
-
+    smt = verify.generate_calculate_result(v_info, load_info)
+    # smt.dump()
 
 def test_verify_float_simple_1():
     load_info = st.LoadAssertInfo(test_case_float_simple_1_info)
