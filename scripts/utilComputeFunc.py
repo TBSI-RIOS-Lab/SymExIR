@@ -2,15 +2,15 @@ import decimal as dc
 from typing import List
 import regex as re
 import z3
-import mpmath as mp
 
-from util import is_number
-
+def is_number(string):
+    pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
+    return bool(pattern.match(string))
 
 def is_normalizedFloatingPoint(inputStr: str):
     pattern = r"(?P<mantissa>\d+\.\d+)\*\(2\*\*(?P<exponent>\d+)\)"
     match = re.match(pattern, inputStr)
-    return True if match == None else False
+    return True if match is None else False
 
 
 def normalizedFloatingPoint_to_Decimal(inputStr: str):
@@ -37,7 +37,7 @@ def normalizedFloatingPoint_to_Decimal(inputStr: str):
         exponent = match["exponent"]
         return (
             dc.Decimal(mantissa) * (dc.Decimal(2) ** dc.Decimal(exponent))
-            if exponent != None
+            if exponent is not None
             else dc.Decimal(mantissa)
         )
 
@@ -191,7 +191,7 @@ def get_ldexp_result_single(float_n, int_n):
     i_input = dc.Decimal(str(int_n))
     number_decimal = normalizedFloatingPoint_to_Decimal(f_input)
     res_decimal = ldexp(i_input, number_decimal)
-    return z3.FPVal(str(res_decimal), f_input.sort())
+    return z3.FPVal(str(res_decimal), float_n.sort())
 
 
 def get_floor_result(val):

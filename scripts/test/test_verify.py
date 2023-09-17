@@ -115,13 +115,13 @@ test_case_vector_llvm_1_info = [
 
 def test_verify_simple_1():
     load_info = st.LoadAssertInfo(test_case_int_simple_1_info)
-    v_info = st.VerificationLaodInfo(test_case_int_simple_1, load_info)
+    v_info = st.VerificationLoadInfo(test_case_int_simple_1, load_info)
     verify.verify(v_info, load_info)
 
 
 def test_verify_simple_2():
     load_info = st.LoadAssertInfo(test_case_int_simple_2_info)
-    v_info = st.VerificationLaodInfo(test_case_int_simple_2, load_info)
+    v_info = st.VerificationLoadInfo(test_case_int_simple_2, load_info)
     try:
         verify.verify(v_info, load_info)
     except RuntimeError:
@@ -132,30 +132,30 @@ def test_verify_simple_2():
 
 def test_verify_simple_3():
     load_info = st.LoadAssertInfo(test_case_int_simple_3_info)
-    v_info = st.VerificationLaodInfo(test_case_int_simple_3, load_info)
+    v_info = st.VerificationLoadInfo(test_case_int_simple_3, load_info)
     verify.verify(v_info, load_info)
 
 def test_verify_int_vector_1():
     load_info = st.LoadAssertInfo(test_case_int_vector_1_info)
-    v_info = st.VerificationLaodInfo(test_case_int_vector_1, load_info)
+    v_info = st.VerificationLoadInfo(test_case_int_vector_1, load_info)
     verify.verify(v_info, load_info)
 
 
 def test_calculate_simple_3():
     load_info = st.LoadAssertInfo(test_case_int_simple_3_info)
-    v_info = st.VerificationLaodInfo(test_case_int_simple_3, load_info)
+    v_info = st.VerificationLoadInfo(test_case_int_simple_3, load_info)
     smt = verify.generate_calculate_result(v_info, load_info)
     # smt.dump()
 
 def test_verify_float_simple_1():
     load_info = st.LoadAssertInfo(test_case_float_simple_1_info)
-    v_info = st.VerificationLaodInfo(test_case_float_simple_1, load_info)
+    v_info = st.VerificationLoadInfo(test_case_float_simple_1, load_info)
     verify.verify(v_info, load_info)
 
 
 def test_calculate_int_vector_1():
     load_info = st.LoadAssertInfo(test_case_int_vector_1_info)
-    v_info = st.VerificationLaodInfo(test_case_int_vector_1, load_info)
+    v_info = st.VerificationLoadInfo(test_case_int_vector_1, load_info)
     verify.generate_calculate_result(v_info, load_info)
 
 

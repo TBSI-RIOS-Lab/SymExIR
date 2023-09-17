@@ -1,7 +1,5 @@
 from enum import Enum
 from typing import Dict, List
-
-import llvmlite.binding as llvm
 import z3
 from config import *
 from utilComputeFunc import normalizedFloatingPoint_to_Decimal
@@ -71,14 +69,13 @@ class DataType(Enum):
 
 
 class Var:
-    """"""
 
     def __init__(
         self, data_type: str, value_name: str, real_value, is_immediate: bool = False
     ) -> None:
         self._data_type: str = data_type
         self._immediate: bool = is_immediate
-        if is_immediate == True:
+        if is_immediate is True:
             self._value_name = value_name
             self._real_value = (
                 None  # The type of real_value in python(int or float ..) is not sure.
@@ -89,7 +86,7 @@ class Var:
 
 
 class Instruction:
-    """Contain all the data to represent an instruction"""
+    """Contain all the data to represent an instruction."""
 
     def __init__(
         self, opcode: str, operators: list, data_type: str, return_value
@@ -101,12 +98,12 @@ class Instruction:
 
 
 class LoadAssertInfo:
-    """"""
+    """Contain the verify information."""
 
-    def __init__(self, assertValue_list: List[tuple]) -> None:
+    def __init__(self, assert_value_list: List[tuple]) -> None:
         self._loc2_value: Dict[int, str] = dict()
-        for i in range(len(assertValue_list)):
-            pair = assertValue_list[i]
+        for i in range(len(assert_value_list)):
+            pair = assert_value_list[i]
             self._loc2_value[pair[0]] = pair[1]
 
     def __str__(self) -> str:
@@ -123,11 +120,14 @@ class LoadAssertInfo:
     def get_value_str(self, loc):
         return self.loc_value[loc]
 
+    def dump(self):
+        for item in self.loc_value:
+            print(item) 
 
-class VerificationLaodInfo:
+class VerificationLoadInfo:
     """Contain all information before the."""
 
-    def __init__(self, instrs, load_info) -> None:
+    def __init__(self, instrs: List[str], load_info: LoadAssertInfo) -> None:
         self._class_name = "VerificationLaodInfo"
         self._instrs = instrs
         self._load_info = load_info
@@ -265,3 +265,40 @@ class VectorTypeInfo:
     @property
     def type(self):
         return self._type
+
+
+def get_llvmInstrs_from_file(file_path: str) -> List[str]:
+    lines = []
+    with open(file_path, "r+", encoding="utf8+") as f:
+        strs = f.readlines()
+        for line in strs:
+            line = line.strip()
+            if line:
+                pass
+            lines.append(line)
+        lines = [line.strip().strip('"') for line in lines]
+        return lines
+
+
+def get_verifyInfo_from_file(file_path: str) -> LoadAssertInfo:
+    lines = []
+    with open(file_path, "r+", encoding= "utf8+") as f:
+        lines = f.readlines()
+    lines = [line.strip() for line in lines]
+    re_b = []
+    for line in lines:
+        if line is None:
+            pass
+        veri_info = line.split(",")
+        if len(veri_info) != 2:
+            raise TypeError("This line({veri_info}) in assertfile is not what we want.")
+        veri_info = [single.strip().strip('"') for single in veri_info]
+        veri_info[0] = int(veri_info[0])
+        tup = tuple(veri_info)
+        re_b.append(tup)
+    return LoadAssertInfo(re_b)
+
+def get_verificationloadinfo_from_file(instr_path: str, assert_path: str) -> VerificationLoadInfo:
+    load_info = get_verifyInfo_from_file(assert_path)
+    instrs = get_llvmInstrs_from_file(instr_path)
+    return VerificationLoadInfo(instrs, load_info)
