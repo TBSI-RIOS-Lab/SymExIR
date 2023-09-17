@@ -3,6 +3,9 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
+    "editor.defaultFormatter": "trunk.io"
   },
+  "githubPullRequests.ignoredPullRequestBranches": [
+    "main"
+  ],
 }

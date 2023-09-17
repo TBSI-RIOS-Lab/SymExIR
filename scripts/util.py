@@ -1,5 +1,5 @@
 import operator as opt
-from typing import Dict, List, Set
+from typing import List, Set
 
 import regex as re
 
@@ -393,7 +393,7 @@ def extra_slice_token(token_ex: str, instr_type: str) -> re.Match[str] | None:
         else:
             pattern = re.compile("")
 
-    if pattern != None:
+    if pattern is not None:
         gs = re.search(
             pattern,
             token_ex,
@@ -433,7 +433,7 @@ def get_instr_dict(instr: str, instr_type: str):
     if instr_type not in NO_RETURN:
         slice = re.split("=", slice)[1].strip(" ")
     slice_token_math = extra_slice_token(slice, instr_type)
-    if slice_token_math == None:
+    if slice_token_math is None:
         raise RuntimeError("The instr({}) dict token is None!".format(instr))
     return slice_token_math.groupdict()
 
@@ -443,7 +443,7 @@ def get_instr_type(instr: str) -> str:
     for word in re.split(" ", instr):
         if word in CARE_OPCODE:
             return word
-    if find_flag == False:
+    if find_flag is False:
         raise NotImplementedError(
             "Can't find the type for this instr: {}.".format(instr)
         )
@@ -512,6 +512,7 @@ def is_assert_instr_type(instr_type: str) -> bool:
 def is_constraint_type(instr_type: str) -> bool:
     return True if instr_type in constraint_instr_type else False
 
+
 # def get_instr_return_type(instr: str, instr_type: str, instr_info: Dict) -> str:
 #     if instr_info == None:
 #         instr_info = get_instr_dict(instr)
@@ -562,6 +563,7 @@ def get_vector_inner_type(value_type: str):
     v_type = value_type.strip("<").strip(">")
     v_type = v_type.split("x")[-1].strip()
     return v_type
+
 
 def is_number(string):
     pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
