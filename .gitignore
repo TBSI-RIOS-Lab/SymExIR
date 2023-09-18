@@ -3,3 +3,4 @@ __pycache__
 .trunk
 .vscode/*
 .pytest*
+.gitpod.yml*
