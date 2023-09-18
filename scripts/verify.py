@@ -59,7 +59,7 @@ def verify(
     verify_info: st.VerificationLoadInfo,
     load_info: st.LoadAssertInfo,
     verify_mode: bool = True,
-):
+) -> st.VerificationContext():
     solver = init_solver()
     instrs = verify_info.instrs
     smt = st.VerificationContext()
@@ -95,6 +95,7 @@ def verify(
             vec_flag = ut.is_vec_type(value_type)
             new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)
             smt.repalce_new_value(value_name, new_value)
+    return smt
     # smt.dump()
 
 

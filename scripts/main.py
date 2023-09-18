@@ -5,8 +5,12 @@ import structure as st
 import verify as vf
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--instrfile", help="llvm instrs file path")
-parser.add_argument("--assertfile", help="assert info file path")
+parser.add_argument("--instrfile", help="To specify llvm instrs file path")
+parser.add_argument("--assertfile", help="To specify assert info file path")
+parser.add_argument(
+    "--dumpinfo", action="store_true", help="To dump the info from verify proccess"
+)
+
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -18,5 +22,7 @@ if __name__ == "__main__":
     verify_info = st.get_verificationloadinfo_from_file(instr_path, assert_path)
     load_info = st.get_verifyInfo_from_file(assert_path)
     jls_extract_var = vf
-    jls_extract_var.verify(verify_info, load_info)
+    res_smt = jls_extract_var.verify(verify_info, load_info)
+    if args.dumpinfo:
+        res_smt.dump_with_valueName_type()
     print("Verify success!")
