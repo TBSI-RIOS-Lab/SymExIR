@@ -50,7 +50,8 @@ LLVMSymEx采取的约束求解器为[Z3](https://github.com/Z3Prover/z3)，Z3在
 
 首先需要明确的是，目前的LLVMSymEx支持进行计算的主要为LLVM Single Value Types，其中包括各类基础类型（i1..., f32...,ptr and etc.）及vector type与小部分Aggregate Types。
 以下的指令为全部按照LLVM instruction设计要求实现，通过测试验证了执行结果的一致性。
-```
+
+```llvm
     "fneg",
     "add",
     "fadd",
@@ -91,10 +92,12 @@ LLVMSymEx采取的约束求解器为[Z3](https://github.com/Z3Prover/z3)，Z3在
     "fcmp",
     "select",
 ```
+
 `load`指令的实现则有些特殊，这是因为在实现上我们需要通过`load`指令加载预设置的数据，推动验证过程，所以`load`虽然提供了支持，但更加侧重于实现预设值到程序验证值的转换过程。
 
 以下的执行指令并没纳入实现过程，也无法进行数值的验证，这是因为这些指令都归属于Terminator Instructions。这些指令超出了BB块的验证范围，也没有计算的功能实现。
-```
+
+```llvm
     "ret",
     "br",
     "switch",
@@ -107,28 +110,36 @@ LLVMSymEx采取的约束求解器为[Z3](https://github.com/Z3Prover/z3)，Z3在
     "cleanupret",
     "unreachable",
 ```
+
 针对以下的指令LLVMSymEx虽然并不提供验证能力，但仍然提供输入数据转换的能力，以保证整体的验证过程执行完整。原因是这些指令都与struct Type有关，超出了目前的实现范围。
-```
+
+```llvm
     "insertvalue",
     "extractvalue",
 ```
+
 以下的执行指令并没纳入实现过程，也无法进行数值的验证，这是因为这些指令都归属于Memory Types。由于LLVMSymEx归属于静态验证工具，无法实际与内存进行交互，所有这些指令都完全无法实现。
-```
+
+```llvm
     "alloca",
     "store",
     "fence",
     "getelementptr",
 ```
+
 以下的执行指令并没纳入实现过程，也无法进行数值的验证，这是因为这些指令与多线程实现或高级语言的异常实现有关，与计算过程无关，也不存在需要验证的数据。
-```
+
+```llvm
     "freeze",
     "va_arg",
     "landingpad",
     "catchpad",
     "cleanuppad",
 ```
+
 `call`指令的实现也是非常具有特点的，当前LLVMSymEx中的`call`指令仅能实现部分LLVM Intrinsic Functions的返回值处理，也就是下面展示的这些。而与LLVM Intrinsic Functions无关的`call`指令则是完全无法实现，当然也不能提供数值的验证，但针对部分返回值为LLVM内置类型的指令而言，LLVMSymEx也提供了外部数据的转换能力，加强数值验证的完整性。需要强调的是，LLVM存在大量的内置函数与内存，指令集与复杂数据类型有关，超出了目前的支持范围，但在未来会尽可能地提供更加丰富的支持。
-```
+
+```llvm
     "llvm.abs",
     "llvm.smax",
     "llvm.umax",
@@ -165,18 +176,18 @@ LLVMSymEx采取的约束求解器为[Z3](https://github.com/Z3Prover/z3)，Z3在
 
 虽然LLVMSymEx提供了高精度的指令符号执行和获取结果的功能，但仍存在以下几个明显的使用限制。首先，它仍然只能处理BB块内部的指令模拟，由于未能针对整体变量进行实现，所有的模拟维度都需要在一个BB块内完成；其次，目前尚未支持过于复杂的数据结构，在LLVM内部，Aggarate Data与Pioson Data的使用占据了一定数量，但由于其复杂性，LLVMSymEx目前尚未支持。第三，无法显示与内存交互的相关指令或操作，这是受制于LLVMSymEx是一个静态工具，无法真实运行程序，更无法真正实现与内存的交互。
 
-
 ## 执行过程详解
 
 在这一章节，我们通过例子对LLVMSymEx的具体实现与执行过程进行一下更加详细的解释，LLVMSymEx会维护一个smt_block用来存储进行验证与计算的数据列表。
 
-
 ### 无法进行计算的指令
+
 LLVM中存在许多与真实内存相关联的指令，超出了LLVMSymEx当前的验证范围。但LLVMSymEx仍需要提供对这些指令结果的传入操作，以满足正常数据运算流的完整性。这里以`load`为例。
 
 当LLVMSymEx对指令`%1 = load i32, i32* %5, align 8, !tbaa !4`与数据`1`进行数据读取与验证时，因为`load`指令不在验证的范围内，LLVMSymEx将直接按照指令中指定的数据类型`i32`将指令对应的value`%1`在smt_block中存储成为`z3.BitVecVal(1, 32)`, 其中的1指示了数据具体值，32指示了数据对应的位长。
 
 ### 计算验证的指令
+
 LLVMSymEx能够在静态的环境下，对LLVM内部的许多指令进行模拟计算，并与传入的真实验证数据进行对比，验证LLVM指令运行的正确性。这里以`add`指令为例。
 
 假设LLVMSymEx将继续读取下一条指令`%2 = add i32 2, %1`与验证值`3`， LLVMSymEx将根据`add`的指令类型与操作数种类进行不同的处理。在示例`add`中，分别存在operand1`2`与`%1`，LLVMSymEx会将具体数字`2`同样转换为z3求解器的内置类型`z3.BitVecVal(2, 32)`，而根据`%1`所代表的操作数名称在smt_block中搜索并获取对应的z3数据变量。而后LLVMSymEx将会把利用求解器的计算指令将两个操作数进行计算，在`add`指令与`i32`的背景下，对应的计算操作也就是`z3.BitVec.add()`。随后，LLVMSymEx将验证值`3`也转换成为`i32`对应的z3变量`z3.BitVecVal(2, 32)`，并与计算操作的返回值进行比对，验证结果正确性，如果结果正确就会进行下一个指令的操作，如果结果不正确，则将立即退出验证过程，并返回错误相关信息。
@@ -211,7 +222,7 @@ LLVMSymEx暂时提供了一个固定的文件读取形式，由于验证功能�
 
 下面的则是验证数据，左侧一列的标志着对应value在LLVM验证文件的对应位置，右侧则是对应的验证数据，目前能够进行验证的数据形式包括integer, float, vector of integer and float.
 
-```
+```txt
     0, "1"
     1, "1"
     2, "2"
@@ -229,6 +240,52 @@ LLVMSymEx暂时提供了一个固定的文件读取形式，由于验证功能�
     14, "5"
     15, "5"
     16, "1"
+```
+
+## LLVMSymEx的使用
+
+当前LLVMSymEx的使用方法非常简单，假设已经安装好了运行所需的python环境（requirements.txt），使用者仅需通过`--instrfile`指定验证的LLVM instruction文件，通过`--assertfile`指定验证所需的文件。
+
+```shell
+python main.py --instrfile ../test/llvm_instr_1.txt --assertfile ../test/assert_info_1.txt
+```
+
+同时也可以通过`--dump`命令打印出验证执行的结果，如下所示：
+
+```shell
+%1 1
+%6 1
+%7 2
+%9 300
+%10 301
+%11 301
+%12 301
+%13 300
+%14 302
+%15 0
+%16 0
+%17 300
+%18 303
+%19 298
+%20 5
+%21 5
+%22 1
+Verify success!
+```
+
+当然也可以通过`--help`或者`-h`获取命令帮助：
+```shell
+$ python main.py -h
+
+usage: main.py [-h] [--instrfile INSTRFILE] [--assertfile ASSERTFILE] [--dumpinfo]
+
+options:
+  -h, --help            show this help message and exit
+  --instrfile INSTRFILE
+                        To specify llvm instrs file path
+  --assertfile ASSERTFILE
+                        To specify assert info file path
+  --dumpinfo            To dump the info from verify proccess
 ```
 
 ## TODO
