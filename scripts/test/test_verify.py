@@ -1,7 +1,4 @@
 import sys
-
-import regex as re
-
 sys.path.append("..")
 
 import verify

@@ -1,10 +1,7 @@
 import parse as ps
 import structure as st
-
-import z3
-
 import util as ut
-
+import z3
 
 NO_RETURN = {"store"}
 
@@ -27,7 +24,9 @@ def smt_add_constraint(
     name: str,
     solver: z3.Solver,
 ):
-    # vector type
+    """
+    add constraints to smt solver and blocks.
+    """
     assert_waitint_value = smt.get_value_by_name(name)
     if assert_waitint_value is None:
         raise ValueError("Wow we get the empty value here!")
@@ -35,12 +34,10 @@ def smt_add_constraint(
         assert_value_input = ps.get_smt_val_vector(value, value_type)
         if not len(assert_value_input) == len(assert_waitint_value):
             raise RuntimeError(
-                "The input({}) vector is not same length as the one in smt!".format(
-                    value
-                )
+                f"The input({value}) vector is not same length as the one in smt!"
             )
-        for i in range(len(assert_value_input)):
-            solver.add(assert_value_input[i] == assert_waitint_value[i])
+        for loc, element in enumerate(assert_value_input):
+            solver.add(element == assert_waitint_value[loc])
         return
 
     ## normal value
@@ -51,25 +48,27 @@ def smt_add_constraint(
     elif ps.get_inner_type(value_type) == st.DataType.FloatingType:
         solver.add(assert_waitint_value == float(value))
     else:
-        raise RuntimeError("Over type({})!".format(value_type))
+        raise RuntimeError(f"Over type({value_type})!")
 
 
-# TODO: add 0xffff type..
 def verify(
     verify_info: st.VerificationLoadInfo,
     load_info: st.LoadAssertInfo,
     verify_mode: bool = True,
 ) -> st.VerificationContext():
+    """
+        Verify the input LLVM IR and assert information.
+    """
     solver = init_solver()
     instrs = verify_info.instrs
     smt = st.VerificationContext()
-    for loc in range(len(instrs)):
+    for loc, element in enumerate(instrs):
         instr_type = verify_info.get_instr_type(loc)
-        value_name = st.get_instr_value_name(instrs[loc], instr_type)
+        value_name = st.get_instr_value_name(element, instr_type)
 
         if value_name == "NoValueName":
             pass
-        ps.parse_instr(instrs[loc], instr_type, smt, verify_info.get_instr_dict(loc))
+        ps.parse_instr(element, instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
         assert_value_str = load_info.get_value_str(loc)
         if ut.is_assert_instr_type(
@@ -104,12 +103,12 @@ def generate_calculate_result(
 ):
     instrs = verify_info.instrs
     smt = st.VerificationContext()
-    for loc in range(len(instrs)):
+    for loc, element in enumerate(instrs):
         instr_type = verify_info.get_instr_type(loc)
-        value_name = st.get_instr_value_name(instrs[loc], instr_type)
+        value_name = st.get_instr_value_name(element, instr_type)
         if value_name == "NoValueName":
             pass
-        ps.parse_instr(instrs[loc], instr_type, smt, verify_info.get_instr_dict(loc))
+        ps.parse_instr(element, instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
         if not ut.no_assertion_value(instr_type) or ps.is_supported_resty(value_type):
             assert_value_str = load_info.get_value_str(loc)
