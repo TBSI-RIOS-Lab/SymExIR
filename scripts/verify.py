@@ -105,12 +105,13 @@ def generate_calculate_result(
     smt = st.VerificationContext()
     for loc, element in enumerate(instrs):
         instr_type = verify_info.get_instr_type(loc)
-        value_name = st.get_instr_value_name(element, instr_type)
+        value_name = ut.get_instr_value_name(element, instr_type)
         if value_name == "NoValueName":
             pass
         ps.parse_instr(element, instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
-        if not ut.no_assertion_value(instr_type) or ps.is_supported_resty(value_type):
+        # replace the val with a value when we need load instr.
+        if ut.is_constraint_type(instr_type) and ps.is_supported_resty(value_type):
             assert_value_str = load_info.get_value_str(loc)
             vec_flag = ut.is_vec_type(value_type)
             new_value = ps.get_nn_basedOn_type(value_type, assert_value_str, vec_flag)

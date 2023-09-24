@@ -3,7 +3,8 @@ from typing import Dict, List
 import z3
 from config import *
 from utilComputeFunc import normalizedFloatingPoint_to_Decimal
-from util import get_instr_dict, get_instr_type, get_instr_value_name
+from util import get_instr_dict, get_instr_type, get_instr_value_name, is_vec_smt_type, pretty_smt_list
+import regex as re
 
 uninplement_instr = [
     "ret",
@@ -219,6 +220,25 @@ class VerificationContext:
             loc = self.var2list[key]
             print(str(key), self.var2type[key], str(self.smt_list[loc]))
 
+    def value_str_pretty(self) -> str:
+        """ Print the list in smt better.
+            just like < i32 123, i32 3244, i32 999>."""
+        res = str()
+        number = 0
+        for key, _ in self.var2list.items():
+            loc = self.var2list[key]
+            value_type = self.var2type[key]
+            out_str = str()
+            print(value_type)
+            if is_vec_smt_type(value_type):
+                out_value_list = [str(single_value) for single_value in self.smt_list[loc]]
+                out_str = pretty_smt_list(value_type, out_value_list)
+            else:
+                out_str = str(self.smt_list[loc])
+            res += str(number) + " , " + '"' + out_str + '"' + '\n'
+            number += 1
+        return res
+
     def print_normal_float(self):
         for key in self.var2list.keys():
             loc = self.var2list[key]
@@ -289,11 +309,16 @@ def get_verifyInfo_from_file(file_path: str) -> LoadAssertInfo:
     for line in lines:
         if line is None:
             pass
-        veri_info = line.split(",")
-        if len(veri_info) != 2:
-            raise TypeError("This line({veri_info}) in assertfile is not what we want.")
-        veri_info = [single.strip().strip('"') for single in veri_info]
-        veri_info[0] = int(veri_info[0])
+        match = re.match(r"^(.*?), (.*)", line)
+        if match is None:
+            raise TypeError(f"This line({line}) in assertfile is not what we want.")
+        first_p, second_p = match.group(1), match.group(2)
+        first_p = first_p.strip('"')
+        second_p = second_p.strip('"')
+        print(second_p)
+        veri_info = list()
+        veri_info.append(int(first_p))
+        veri_info.append(second_p)
         tup = tuple(veri_info)
         re_b.append(tup)
     return LoadAssertInfo(re_b)

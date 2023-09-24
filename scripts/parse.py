@@ -272,6 +272,8 @@ def get_smt_vector(value_name, vec_type):
 
 
 def get_smt_val_vector(value_vec, vec_type):
+    if value_vec is None or vec_type is None:
+        raise RuntimeError("The input is Empty")
     size, var_type = get_info_from_vector_type(vec_type)
     values = value_vec.strip("<").strip(">").strip(" ").split(",")
     values = [values[i].strip(" ") for i in range(len(values))]
@@ -701,7 +703,7 @@ def parse_instr_fptosi(
     # The ‘fptoui’ instruction converts its floating-point operand into the nearest
     # (rounding towards zero) unsigned integer value. If the value cannot fit in ty2,
     # the result is a poison value.
-    """Not implemented!"""
+    """Not implemented."""
     parse_instr_conversion(value_name, data_token, smt_block, z3e.fpToSBV_RTZ)
 
 
@@ -1505,7 +1507,8 @@ def parse_instr_icmp_vec(
         get_icmp_result(first_value[i], second_value[i], cond)
         for i in range(len(first_value))
     ]
-    smt_block.add_new_value(value_name, res, "i1")
+    value_type = '<' + str(len(res)) + " x " + 'i1>'
+    smt_block.add_new_value(value_name, res, value_type)
 
 
 def parse_instr_fmul_vec(
