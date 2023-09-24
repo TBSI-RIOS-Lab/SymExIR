@@ -494,6 +494,8 @@ ret_aggregate_instr_group = {"extractelement"}
 
 constraint_instr_type = {
     "load",
+    "getelementptr",
+    "extractvalue"
 }
 
 
@@ -584,3 +586,26 @@ def is_aggregate_operations(instr_type: str):
 
 def is_call_type(instr_type: str):
     return True if instr_type in call_type else False
+
+
+def is_vec_smt_type(value_type: str):
+    pattern = r"^<\d x (?P<type>\S*)>$"
+    match = re.match(pattern, value_type)
+    return match is not None
+
+
+def pretty_smt_list(smt_type: str, value: List[str]):
+    """ Print the list in smt better.
+        just like < i32 123, i32 3244, i32 999>."""
+    pattern = r"^<\d x (?P<type>\S*)>$"
+    match = re.match(pattern, smt_type)
+    if match is None:
+        raise ValueError(f"The input({smt_type}) is not a vec type")
+    single_value_type = match.groupdict()["type"]
+    res_str = "< "
+    for single_value in value:
+        res_str += single_value_type + " " + single_value + ", "
+    if res_str.endswith(", "):
+        res_str = res_str[:-2]
+    res_str += ">"
+    return res_str

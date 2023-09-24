@@ -89,6 +89,10 @@ test_case_int_vector_1_info = [
     (3, "< i32 0, i32 4294967295, i32 4294967295>"),
 ]
 
+test_case_int_vector_1_info_just_load = [
+    (0, "< i32 1, i32 1, i32 1>"),
+    (1, "< i32 1, i32 1, i32 1>"),
+]
 
 test_case_float_simple_1 = [
     "%1 = load double, double* %5, align 8, !tbaa !4",
@@ -112,6 +116,7 @@ test_case_vector_llvm_1_info = [
 
 def test_verify_simple_1():
     load_info = st.LoadAssertInfo(test_case_int_simple_1_info)
+    print(load_info)
     v_info = st.VerificationLoadInfo(test_case_int_simple_1, load_info)
     verify.verify(v_info, load_info)
 
@@ -134,15 +139,16 @@ def test_verify_simple_3():
 
 def test_verify_int_vector_1():
     load_info = st.LoadAssertInfo(test_case_int_vector_1_info)
+    print(load_info)
     v_info = st.VerificationLoadInfo(test_case_int_vector_1, load_info)
-    verify.verify(v_info, load_info)
-
+    smt = verify.verify(v_info, load_info)
+    smt.dump()
 
 def test_calculate_simple_3():
     load_info = st.LoadAssertInfo(test_case_int_simple_3_info)
     v_info = st.VerificationLoadInfo(test_case_int_simple_3, load_info)
     smt = verify.generate_calculate_result(v_info, load_info)
-    # smt.dump()
+    smt.dump()
 
 def test_verify_float_simple_1():
     load_info = st.LoadAssertInfo(test_case_float_simple_1_info)
@@ -151,16 +157,16 @@ def test_verify_float_simple_1():
 
 
 def test_calculate_int_vector_1():
-    load_info = st.LoadAssertInfo(test_case_int_vector_1_info)
+    load_info = st.LoadAssertInfo(test_case_int_vector_1_info_just_load)
     v_info = st.VerificationLoadInfo(test_case_int_vector_1, load_info)
-    verify.generate_calculate_result(v_info, load_info)
-
+    smt = verify.generate_calculate_result(v_info, load_info)
+    print(smt.value_str_pretty())
 
 if __name__ == "__main__":
     test_verify_simple_1()
     test_verify_simple_2()
     test_verify_simple_3()
     test_verify_int_vector_1()
+    test_verify_float_simple_1()
     test_calculate_simple_3()
     test_calculate_int_vector_1()
-    test_verify_float_simple_1()

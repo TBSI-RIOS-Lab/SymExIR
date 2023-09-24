@@ -44,7 +44,7 @@ def normalizedFloatingPoint_to_Decimal(inputStr: str):
 
 def get_compute_result_single(input_number, func):
     if not isinstance(input_number, z3.FPRef):
-        raise RuntimeError("The input({}) is not z3.FPVal".format(input_number))
+        raise RuntimeError(f"The input({input_number}) is not z3.FPVal")
     number_decimal = normalizedFloatingPoint_to_Decimal(str(input_number))
     res_decimal = func(number_decimal)
     return z3.FPVal(str(res_decimal), input_number.sort())
