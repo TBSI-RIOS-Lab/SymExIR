@@ -10,19 +10,28 @@ parser.add_argument("--assertfile", help="To specify assert info file path")
 parser.add_argument(
     "--dumpinfo", action="store_true", help="To dump the info from verify proccess"
 )
+parser.add_argument("--generateResult", action="store_true",help="To generate the calculate result")
 
 args = parser.parse_args()
 
 if __name__ == "__main__":
     instr_path = args.instrfile
     assert_path = args.assertfile
-    if instr_path is None or assert_path is None:
-        print("Plz provide a right path for verify!")
-        sys.exit(1)
+    if args.generateResult:
+        if instr_path is None:
+            print("Plz provide a right path for verify!")
+            sys.exit(1)
+    else:
+        if instr_path is None or assert_path is None:
+            print("Plz provide a right path for verify!")
+            sys.exit(1)
     verify_info = st.get_verificationloadinfo_from_file(instr_path, assert_path)
     load_info = st.get_verifyInfo_from_file(assert_path)
-    jls_extract_var = vf
-    res_smt = jls_extract_var.verify(verify_info, load_info)
-    if args.dumpinfo:
+    if args.generateResult:
+        res_smt = vf.generate_calculate_result(verify_info, load_info)
         res_smt.dump_with_valueName_type()
-    print("Verify success!")
+    else:
+        res_smt = vf.verify(verify_info, load_info)
+        print("Verify success!")
+        if args.dumpinfo:
+            res_smt.dump_with_valueName_type()
