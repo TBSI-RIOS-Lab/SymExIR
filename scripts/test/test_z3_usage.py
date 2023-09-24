@@ -2,16 +2,16 @@ import decimal as dc
 import z3
 
 def test_list_z3():
-    l: list = []
-    l.append(z3.Int("x"))
-    l.append(z3.Int("y"))
-    l.append(z3.Int("z"))
+    list_long: list = []
+    list_long.append(z3.Int("x"))
+    list_long.append(z3.Int("y"))
+    list_long.append(z3.Int("z"))
     solver = z3.Solver()
-    solver.add(l[2] - l[1] == 0)
-    solver.add(l[2] == 3)
-    solver.add(l[1] + l[0] == l[2])
-    solver.add(l[0] >= 0)
-    solver.add(l[0] >= 0)
+    solver.add(list_long[2] - list_long[1] == 0)
+    solver.add(list_long[2] == 3)
+    solver.add(list_long[1] + list_long[0] == list_long[2])
+    solver.add(list_long[0] >= 0)
+    solver.add(list_long[0] >= 0)
     assert solver.check() == z3.sat
     print(solver.model())
 

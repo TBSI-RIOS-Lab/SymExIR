@@ -568,3 +568,19 @@ def get_vector_inner_type(value_type: str):
 def is_number(string):
     pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
     return bool(pattern.match(string))
+
+
+def is_care_opcode(s: str) -> bool:
+    return True if s in CARE_OPCODE else False
+
+
+def is_aggregate_operations(instr_type: str):
+    return (
+        True
+        if instr_type in extractvalue_type or instr_type in insertvalue_type
+        else False
+    )
+
+
+def is_call_type(instr_type: str):
+    return True if instr_type in call_type else False

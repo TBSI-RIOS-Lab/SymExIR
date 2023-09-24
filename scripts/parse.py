@@ -1,28 +1,42 @@
+import ast
 import copy
-import operator as opt
 from copy import deepcopy
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
-import llvmlite.binding as llvm
 import regex as re
 import structure as st
+import utilComputeFunc as uf
 import z3
 import z3Extension as z3e
-from util import *
-import utilComputeFunc as uf
+from util import (
+    generate_instr_types,
+    get_instr_dict,
+    get_vector_inner_type,
+    getelementptr_type,
+    is_aggregate_operations,
+    is_call_type,
+    is_care_opcode,
+    is_instr_in_memory_group,
+    is_instr_in_ptr_instr_group,
+    is_instr_over_bb,
+    is_no_return_instr,
+    is_number,
+    is_termanitor_instr_type,
+    is_vec_type,
+)
 
 
 class SliceToken:
     def __init__(
         self,
-        type: str,
+        slice_type: str,
         return_value_name: str,
         return_value_type: str,
         opcode: str,
-        slice: str,
+        slice_str: str,
     ) -> None:
-        self._type: str = type
-        self._slices: str = slice
+        self._type: str = slice_type
+        self._slices: str = slice_str
         self._return_value_name: str = return_value_name
         self._return_value_type: str = return_value_type
         self._opcode = opcode
@@ -44,15 +58,16 @@ class SliceToken:
         return self._slices
 
 
-
 def get_opcode(s: str):
-    """This function is not recommended since it lacks a
-    check to ensure that the input obeys the LLVM instruction command."""
+    """
+    Get the opCode by str.
+    This function is not recommended since it lacks a check to ensure that the input obeys the LLVM instruction command.
+    """
     if "," in s:
         raise ValueError("There is ',' in input!\n")
     for part in s.split(" "):
         ps = part.strip()
-        if ps in CARE_OPCODE:
+        if is_care_opcode(ps):
             return ps
     return "unimplemented"
 
@@ -77,12 +92,6 @@ def slice_instr(s: str, type: str, opcode: str) -> SliceToken:
     else:
         token = SliceToken("VOID", "", "VOID", opcode, s.strip())
         return token
-
-
-def parse_ll(ll_moudle: llvm.ModuleRef):
-    for function in ll_moudle.functions:
-        pass  # TODO: unfinished part which need check the plan once more!
-    pass
 
 
 Name2Type = {
@@ -219,7 +228,7 @@ def is_simple_type(var_type) -> bool:
 def parse_instr_load(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
-    if data_token == None or "ty" not in data_token.keys():
+    if data_token is None or "ty" not in data_token.keys():
         raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
 
     if not smt_block.is_there_same_value(value_name):
@@ -235,7 +244,7 @@ def parse_instr_load(
 def parse_instr_getelementptr(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
-    if data_token != None and len(data_token):
+    if data_token is not None and len(data_token):
         raise RuntimeError("The data_token for getelementptr should be empty.\n")
 
     value = get_basic_smt_value(value_name, "ptr")
@@ -245,20 +254,13 @@ def parse_instr_getelementptr(
 def get_info_from_vector_type(value_type: str) -> Tuple[int, str]:
     pattern = re.compile("<(?P<size>.*?) x (?P<type>.*?)>")
     search_result = re.search(pattern, value_type.strip(" "))
-    if search_result != None:
+    if search_result is not None:
         return int(search_result["size"]), search_result["type"]
     else:
         raise ValueError("The input vector type({}) is wrong!\n".format(value_type))
 
 
 def get_smt_vector(value_name, vec_type):
-    """
-    >>> value_name = "%1"
-    >>> vec_type = "<2 x i32>"
-    >>> X = get_smt_vector(value_name, vec_type)
-    >>> X
-    [%1__0, %1__1]
-    """
     size, var_type = get_info_from_vector_type(vec_type)
     sort = get_basic_smt_sort(var_type)
     if get_inner_type(var_type) == st.DataType.IntegerType:
@@ -270,16 +272,6 @@ def get_smt_vector(value_name, vec_type):
 
 
 def get_smt_val_vector(value_vec, vec_type):
-    """
-    >>> value_name = "< i32 1, i32 1>"
-    >>> vec_type = "<2 x i32>"
-    >>> X = get_smt_val_vector(value_name, vec_type)
-    >>> X
-    [1, 1]
-    >>> value_name = "< float 1.0, float 1.0>"
-    >>> vec_type = "<2 x float>"
-    >>> X = get_smt_val_vector(value_name, vec_type)
-    """
     size, var_type = get_info_from_vector_type(vec_type)
     values = value_vec.strip("<").strip(">").strip(" ").split(",")
     values = [values[i].strip(" ") for i in range(len(values))]
@@ -308,13 +300,13 @@ def get_smt_val_vector(value_vec, vec_type):
 def get_nn_basedOn_type(
     v_type: str, value: str, is_vec: bool
 ) -> z3.BitVecNumRef | z3.BoolRef | z3.FPNumRef | List:
-    "return real val for the input."
+    """Return real val for the input."""
     if is_vec and is_vec_type(v_type):
         return get_smt_val_vector(value, v_type)
     else:
         if not is_number(value):
-            raise TypeError("The value({}) is not digit".format(value))
-        value_number = eval(value)
+            raise TypeError(f"The value({value}) is not digit")
+        value_number = ast.literal_eval(value)
         res = get_basic_smt_val(v_type, value_number)
         return res
 
@@ -364,7 +356,7 @@ def is_z3_vector(var):
 
 
 def is_same_z3_vector_type(var1, var2):
-    "Check if the two argument are same z3 type in python list"
+    """Check if the two argument are same z3 type in python list."""
     # TODO: The check here is too weak.
     if is_z3_vector(var1) and is_z3_vector(var2):
         if len(var1) != len(var2):
@@ -510,8 +502,6 @@ def get_fcmp_result(first_value, second_value, cond: str):
 def parse_instr_fcmp(
     value_name: str, data_token: Dict[str, str], smt_block: st.VerificationContext
 ):
-    ordered_group = {"oeq", "ogt", "oge", "olt", "ole", "one", "ord"}
-    unordered_group = {"ueq", "ugt", "uge", "ult", "ule", "une", "uno"}
     cond, ty, op1, op2 = (
         data_token["cond"],
         data_token["ty"],
@@ -680,7 +670,7 @@ def parse_instr_fptrunc(
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
     # %X = fptrunc double 16777217.0 to float    ; yields float:16777216.0 wrong?
-    "Use z3.fpFPToFP to conversion"
+    """Use z3.fpFPToFP to conversion."""
     parse_instr_conversion(value_name, data_token, smt_block, z3e.fpFPToFP_RNE)
 
 
@@ -692,7 +682,7 @@ def parse_instr_fpext(
     # NOTE: The bit size of the value must be larger than the bit size of the destination type, ty2. Equal sized types are not allowed.
     # Actually the 'trunc' remain the low order bits which means the right side of bits.
     # %X = fptrunc double 16777217.0 to float    ; yields float:16777216.0 wrong?
-    "Use z3.fpFPToFP to conversion"
+    """Use z3.fpFPToFP to conversion."""
     parse_instr_conversion(value_name, data_token, smt_block, z3e.fpFPToFP_RNE)
 
 
@@ -711,7 +701,7 @@ def parse_instr_fptosi(
     # The ‘fptoui’ instruction converts its floating-point operand into the nearest
     # (rounding towards zero) unsigned integer value. If the value cannot fit in ty2,
     # the result is a poison value.
-    "The poison value is not implemented!"
+    """Not implemented!"""
     parse_instr_conversion(value_name, data_token, smt_block, z3e.fpToSBV_RTZ)
 
 
@@ -732,7 +722,7 @@ def split_argu(argu: str, sp: str):
     res = []
     flag: bool = False
     for i in argu:
-        if i == sp and flag == False:
+        if i == sp and flag is False:
             res.append(deepcopy(tmp))
             tmp = ""
         elif i == "<":
@@ -755,7 +745,7 @@ def separate_argument(argu: str):
     res_argu = []
     for argu_item in argu_list:
         gs = re.search(pattern, argu_item)
-        if gs == None:
+        if gs is None:
             raise RuntimeError("The argument is not in our exception..")
         else:
             res_argu.append([gs["type"], gs["val"]])
@@ -818,7 +808,7 @@ def get_maximum_float(a, b, sort):
 
 
 def get_llvm_compare_result(first, second, func):
-    "This function run without type check."
+    """Get the compare result without type check."""
     if isinstance(first, List) and isinstance(second, List):
         assert len(first) == len(second)
         return [func(first[i], second[i]) for i in range(len(first))]
@@ -920,7 +910,7 @@ def parse_instr_llvm_maximum(
 
 def get_abs_result(val):
     if isinstance(val, List):
-        a = z3.simplify(z3.Abs(val[0]))
+        # a = z3.simplify(z3.Abs(val[0]))
         return [z3.Abs(val[i]) for i in range(len(val))]
     else:
         return z3.Abs(val)
@@ -1110,12 +1100,14 @@ def parse_instr_llvm_trunc(
         value_name, argments, rs_ty, smt_block, uf.get_trunc_result
     )
 
+
 def parse_instr_llvm_round(
     value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
 ):
     parse_instr_llvm_single_argument(
         value_name, argments, rs_ty, smt_block, uf.get_round_result
     )
+
 
 def parse_instr_llvm_ldexp(
     value_name: str, argments: str, rs_ty: str, smt_block: st.VerificationContext
@@ -1134,12 +1126,8 @@ def parse_instr_llvm_ldexp(
             uf.get_ldexp_result_single(first[i], second[i]) for i in range(len(first))
         ]
     else:
-        res = get_minimum_float(first, second)
+        res = get_minimum_float(first, second, sort)
     smt_block.add_new_value(value_name, res, rs_ty)
-
-
-def get_powi(number, power):
-    "The number must be a float and the"
 
 
 instr_call_function_dict = {
@@ -1206,16 +1194,16 @@ def parse_instr_call(
     print(instr)
     """"""
     value_name = instr.split("=")[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
-    assert instr_infoDict != None
+    assert instr_infoDict is not None
     re_type = instr_infoDict["ty"]
     if not is_supported_resty(re_type):
-        raise RuntimeError("The res_type({}) of call is not supported.".format(re_type))
+        raise RuntimeError(f"The res_type({re_type}) of call is not supported.")
     function_all_str = instr_infoDict["function"]
     function_name, argu = separate_function_and_argument(function_all_str)
     parse_function = get_right_key(function_name)
-    if parse_function != None:
+    if parse_function is not None:
         parse_function(value_name, argu, re_type, smt_block)
     else:
         parse_callFunc_empty(value_name, argu, re_type, smt_block)
@@ -1276,12 +1264,11 @@ def parse_instr_vector_type(
 def parse_instr_insertelement(
     instr: str, smt_block: st.VerificationContext, data_token: Dict[str, str] | None
 ):
-    """"""
     value_name = re.split("=", instr.strip())[0].strip(" ")
-    if data_token == None:
+    if data_token is None:
         data_token = get_instr_dict(instr, "insertelement")
 
-    vs, n, ty, val, ty1, elt, ty2, idx = (
+    vs, n, ty, val, ty1, elt, _, idx = (
         data_token["vs"],
         data_token["n"],
         data_token["ty"],
@@ -1291,7 +1278,7 @@ def parse_instr_insertelement(
         data_token["ty2"],
         data_token["idx"],
     )
-    if vs == None:
+    if vs is None:
         vec_type = "< " + str(n) + " x " + str(ty) + ">"
     else:
         raise RuntimeError("Don't support vscal vector right now!")
@@ -1316,12 +1303,11 @@ def parse_instr_insertelement(
 def parse_instr_extractelement(
     instr: str, smt_block: st.VerificationContext, data_token: Dict[str, str] | None
 ):
-    """"""
     value_name = re.split("=", instr.strip())[0].strip(" ")
-    if data_token == None:
+    if data_token is None:
         data_token = get_instr_dict(instr, "extractelement")
 
-    vs, n, ty, val, ty1, op1 = (
+    vs, n, ty, val, _, op1 = (
         data_token["vs"],
         data_token["n"],
         data_token["ty"],
@@ -1329,7 +1315,7 @@ def parse_instr_extractelement(
         data_token["ty1"],
         data_token["op1"],
     )
-    if vs == None:
+    if vs is None:
         vec_type = "< " + str(n) + " x " + str(ty) + ">"
     else:
         raise RuntimeError("Don't support vscal vector right now!")
@@ -1359,7 +1345,7 @@ def parse_instr_shufflevector(
         return mask_res
 
     value_name = re.split("=", instr.strip())[0].strip(" ")
-    if data_token == None:
+    if data_token is None:
         data_token = get_instr_dict(instr, "shufflevector")
 
     v1_vs, v2_vs, v1, v2, mask, v1_type, v2_type, v1_size, v2_size, mask_size = (
@@ -1374,7 +1360,7 @@ def parse_instr_shufflevector(
         data_token["v2_n"],
         data_token["mask_n"],
     )
-    if v1_vs == None and v2_vs == None:
+    if v1_vs is None and v2_vs is None:
         value1_vec_type = "< " + str(v1_size) + " x " + str(v1_type) + ">"
         value2_vec_type = "< " + str(v2_size) + " x " + str(v2_type) + ">"
     else:
@@ -1561,8 +1547,8 @@ def parse_instr_fneg_vec(
 def parse_instr_fcmp_vec(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
-    ordered_group = {"oeq", "ogt", "oge", "olt", "ole", "one", "ord"}
-    unordered_group = {"ueq", "ugt", "uge", "ult", "ule", "une", "uno"}
+    # ordered_group = {"oeq", "ogt", "oge", "olt", "ole", "one", "ord"}
+    # unordered_group = {"ueq", "ugt", "uge", "ult", "ule", "une", "uno"}
     cond, ty, op1, op2 = (
         data_token["cond"],
         data_token["ty"],
@@ -1658,7 +1644,7 @@ def parse_instr_fptrunc_vec(
     data_token: Dict[str, str],
     smt_block: st.VerificationContext,
 ):
-    "Use z3.fpFPToFP to conversion"
+    """Use z3.fpFPToFP to conversion."""
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpFPToFP_RNE)
 
 
@@ -1667,7 +1653,7 @@ def parse_instr_fpext_vec(
     data_token: Dict[str, str],
     smt_block: st.VerificationContext,
 ):
-    "Use z3.fpFPToFP to conversion"
+    """Use z3.fpFPToFP to conversion."""
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpFPToFP_RNE)
 
 
@@ -1683,7 +1669,7 @@ def parse_instr_fptosi_vec(
     # The ‘fptoui’ instruction converts its floating-point operand into the nearest
     # (rounding towards zero) unsigned integer value. If the value cannot fit in ty2,
     # the result is a poison value.
-    "The poison value is not implemented!"
+    """Not implemented."""
     parse_instr_conversion_vec(value_name, data_token, smt_block, z3e.fpToSBV_RTZ)
 
 
@@ -1736,14 +1722,6 @@ instr_function_vector_dict = {
 }
 
 
-def is_aggregate_operations(instr_type: str):
-    return (
-        True
-        if instr_type in extractvalue_type or instr_type in insertvalue_type
-        else False
-    )
-
-
 def parse_instr_no_return():
     pass
 
@@ -1760,7 +1738,7 @@ def is_vectortype_instr(instr_type: str):
 
 
 def is_call_instr(instr_type: str):
-    if instr_type in call_type:
+    if is_call_type(instr_type):
         return True
     else:
         return False
@@ -1906,7 +1884,7 @@ def parse_instr_mem(
     name = re.split("=", instr)[0].strip(" ")
     instr = instr.strip()
     name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
     instr_function_mem[instr_type](name, instr_infoDict, smt_block)
 
@@ -2033,7 +2011,7 @@ def parse_instr_ptrInvolved(
     name = re.split("=", instr)[0].strip(" ")
     instr = instr.strip()
     name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
     instr_function_ptrInvolved[instr_type](name, instr_infoDict, smt_block)
 
@@ -2050,7 +2028,7 @@ def parse_instr_select(
     name = re.split("=", instr)[0].strip(" ")
     instr = instr.strip()
     name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
     selty = instr_infoDict["selty"]
 
@@ -2059,14 +2037,12 @@ def parse_instr_select(
     else:
         parse_instr_select_simple(name, instr_infoDict, smt_block)
 
-
 class aggregate_type:
     def __init__(self) -> None:
         pass
 
     def __str__(self) -> str:
         return "aggregate_type do nothing...."
-
 
 def parse_instr_aggregate_operations(
     instr: str,
@@ -2076,19 +2052,19 @@ def parse_instr_aggregate_operations(
 ):
     instr = instr.strip()
     name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
     if instr_type in instr_function_aggregate_operations.keys():
         instr_function_aggregate_operations[instr_type](name, instr_infoDict, smt_block)
     else:
-        raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
+        raise st.NotImplementedError(f"The instr({instr}) is not implemented")
 
 
 def parse_instr_extractvalue(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
-    if data_token == None or "type" not in data_token.keys():
-        raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
+    if data_token is None or "type" not in data_token.keys():
+        raise RuntimeError(f"Wrong data_token({data_token}) tranfer!")
 
     type_list = data_token["type"].strip(" ").strip("{").strip("}").split(",")
     type_list = [type_list[i].strip(" ") for i in range(len(type_list))]
@@ -2116,18 +2092,13 @@ def parse_instr_extractvalue(
         )
 
 
-class aggregate_type:
-    def __init__(self) -> None:
-        pass
 
-    def __str__(self) -> str:
-        return "aggregate_type do nothing...."
 
 
 def parse_instr_insertvalue(
     value_name: str, data_token: Dict, smt_block: st.VerificationContext
 ):
-    if data_token == None or "type" not in data_token.keys():
+    if data_token is None or "type" not in data_token.keys():
         raise RuntimeError("Wrong data_token({}) tranfer!".format(data_token))
     value = aggregate_type()
     smt_block.add_new_value(value_name, value, "aggregate_type")
@@ -2139,21 +2110,6 @@ instr_function_aggregate_operations = {
 }
 
 
-def parse_instr_aggregate_operations(
-    instr: str,
-    instr_type: str,
-    smt_block: st.VerificationContext,
-    instr_infoDict: Dict | None = None,
-):
-    instr = instr.strip()
-    name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
-        instr_infoDict = get_instr_dict(instr, instr_type)
-    if instr_type in instr_function_aggregate_operations.keys():
-        instr_function_aggregate_operations[instr_type](name, instr_infoDict, smt_block)
-    else:
-        raise st.NotImplementedError("The instr({}) is not implemented".format(instr))
-
 
 def parse_instr_basic(
     instr: str,
@@ -2163,7 +2119,7 @@ def parse_instr_basic(
 ):
     instr = instr.strip()
     name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
     if instr_type in instr_function_simple_dict.keys():
         instr_function_simple_dict[instr_type](name, instr_infoDict, smt_block)
@@ -2179,7 +2135,7 @@ def parse_instr_vector(
 ):
     instr = instr.strip()
     name = re.split("=", instr)[0].strip(" ")
-    if instr_infoDict == None:
+    if instr_infoDict is None:
         instr_infoDict = get_instr_dict(instr, instr_type)
     if instr_type in instr_function_vector_dict.keys():
         instr_function_vector_dict[instr_type](name, instr_infoDict, smt_block)
@@ -2197,7 +2153,7 @@ def parse_instr(
     smt_block: st.VerificationContext,
     instr_info_dict: Dict = None,
 ):
-    if instr_info_dict == None:
+    if instr_info_dict is None:
         instr_info_dict = get_instr_dict(instr, instr_type)
     if is_no_return_instr(instr_type):
         parse_instr_no_return()
