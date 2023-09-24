@@ -44,7 +44,6 @@ def test_op_on_vectors():
     Y = z3e.FpVector("x", 5, sort)
     rm = z3.RNE()
     res = [z3.simplify(z3e.fpAdd_RNE(X[i], Y[i])) for i in range(len(X))]
-    print(res)
 
 
 if __name__ == "__main__":

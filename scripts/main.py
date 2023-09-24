@@ -17,19 +17,14 @@ args = parser.parse_args()
 if __name__ == "__main__":
     instr_path = args.instrfile
     assert_path = args.assertfile
-    if args.generateResult:
-        if instr_path is None:
-            print("Plz provide a right path for verify!")
-            sys.exit(1)
-    else:
-        if instr_path is None or assert_path is None:
-            print("Plz provide a right path for verify!")
-            sys.exit(1)
+    if instr_path is None or assert_path is None:
+        print("Plz provide a right path for verify!")
+        sys.exit(1)
     verify_info = st.get_verificationloadinfo_from_file(instr_path, assert_path)
     load_info = st.get_verifyInfo_from_file(assert_path)
     if args.generateResult:
         res_smt = vf.generate_calculate_result(verify_info, load_info)
-        res_smt.dump_with_valueName_type()
+        print(res_smt.value_str_pretty())
     else:
         res_smt = vf.verify(verify_info, load_info)
         print("Verify success!")
