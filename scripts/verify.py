@@ -67,7 +67,7 @@ def verify(
         value_name = st.get_instr_value_name(element, instr_type)
 
         if value_name == "NoValueName":
-            pass
+            continue
         ps.parse_instr(element, instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
         assert_value_str = load_info.get_value_str(loc)
@@ -107,7 +107,7 @@ def generate_calculate_result(
         instr_type = verify_info.get_instr_type(loc)
         value_name = ut.get_instr_value_name(element, instr_type)
         if value_name == "NoValueName":
-            pass
+            continue
         ps.parse_instr(element, instr_type, smt, verify_info.get_instr_dict(loc))
         value_type = smt.get_value_type_by_name(value_name)
         # replace the val with a value when we need load instr.

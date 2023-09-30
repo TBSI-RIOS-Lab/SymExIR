@@ -1,11 +1,14 @@
 import decimal as dc
 from typing import List
+
 import regex as re
 import z3
+
 
 def is_number(string):
     pattern = re.compile(r"^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
     return bool(pattern.match(string))
+
 
 def is_normalizedFloatingPoint(inputStr: str):
     pattern = r"(?P<mantissa>\d+\.\d+)\*\(2\*\*(?P<exponent>\d+)\)"
@@ -15,6 +18,10 @@ def is_normalizedFloatingPoint(inputStr: str):
 
 def normalizedFloatingPoint_to_Decimal(inputStr: str):
     dc.getcontext().prec = 1024
+    flag_symbol = True
+    if inputStr.startswith("-"):
+        flag_symbol = False
+        inputStr = inputStr[1:]
     if "*" not in inputStr and is_number(inputStr):
         return dc.Decimal(inputStr)
     pattern = r"(?P<mantissa>\d+"
@@ -29,17 +36,17 @@ def normalizedFloatingPoint_to_Decimal(inputStr: str):
         pattern += r"\*\(2\*\*(?P<exponent>\d+)\)"
     match = re.match(pattern, inputStr)
     if not match:
-        raise ValueError(
-            "The inputStr({}) is not normalizedFloatingPoint!".format(inputStr)
-        )
+        raise ValueError(f"The inputStr({inputStr}) is not normalizedFloatingPoint!")
     else:
         mantissa = match["mantissa"]
         exponent = match["exponent"]
-        return (
+
+        res = (
             dc.Decimal(mantissa) * (dc.Decimal(2) ** dc.Decimal(exponent))
             if exponent is not None
             else dc.Decimal(mantissa)
         )
+        return res if flag_symbol else -1 * res
 
 
 def get_compute_result_single(input_number, func):
@@ -332,8 +339,6 @@ def log2(x):
         dc.getcontext().prec += 2
         res = x.log10() / dc.Decimal(2).log10()
         dc.getcontext().prec -= 2
-        print("res")
-        print(res)
         return res
     else:
         raise RuntimeError("The input type is not Decimal!\n")
