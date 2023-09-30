@@ -1193,7 +1193,6 @@ def parse_instr_call(
     smt_block: st.VerificationContext,
     instr_infoDict: Dict | None = None,
 ):
-    print(instr)
     """"""
     value_name = instr.split("=")[0].strip(" ")
     if instr_infoDict is None:

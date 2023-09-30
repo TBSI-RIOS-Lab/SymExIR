@@ -2,6 +2,8 @@ import operator as opt
 from typing import List, Set
 
 import regex as re
+import z3
+from utilComputeFunc import normalizedFloatingPoint_to_Decimal
 
 CARE_OPCODE = {
     "ret",
@@ -492,11 +494,7 @@ no_assert_group = {
 ret_aggregate_instr_group = {"extractelement"}
 
 
-constraint_instr_type = {
-    "load",
-    "getelementptr",
-    "extractvalue"
-}
+constraint_instr_type = {"load", "getelementptr", "extractvalue"}
 
 
 def no_assertion_value(instr_type) -> bool:
@@ -595,8 +593,8 @@ def is_vec_smt_type(value_type: str):
 
 
 def pretty_smt_list(smt_type: str, value: List[str]):
-    """ Print the list in smt better.
-        just like < i32 123, i32 3244, i32 999>."""
+    """Print the list in smt better.
+    just like < i32 123, i32 3244, i32 999>."""
     pattern = r"^<\d x (?P<type>\S*)>$"
     match = re.match(pattern, smt_type)
     if match is None:
@@ -609,3 +607,15 @@ def pretty_smt_list(smt_type: str, value: List[str]):
         res_str = res_str[:-2]
     res_str += ">"
     return res_str
+
+
+def get_normal_str_from_z3_type(source) -> str | None:
+    """Return the basic mode in normal literal way."""
+    if isinstance(source, z3.FPNumRef):
+        return str(normalizedFloatingPoint_to_Decimal(str(source)))
+    elif isinstance(source, z3.BitVecNumRef):
+        return str(source)
+    else:
+        raise RuntimeError(
+            f"Plz add the normal str way of {type(source)} before use the function"
+        )

@@ -9,6 +9,7 @@ import parse
 import structure as st
 import z3
 import z3Extension as z3e
+import util
 
 test_case_float = [
     "%1 = load double, double* %5, align 8, !tbaa !4",
@@ -191,212 +192,212 @@ def test_regex_sample():
     test_case_addrspacecast = "addrspacecast ptr %x to ptr addrspace(1)"
     test_case_addrspacecast_vec = "addrspacecast <4 x ptr> %z to <4 x ptr addrspace(3)>"
 
-    gs: re.Match[str] | None = parse.extra_slice_token(test_case_fneg, "fneg")
-    assert gs != None
+    gs: re.Match[str] | None = util.extra_slice_token(test_case_fneg, "fneg")
+    assert gs is not None
     assert gs["type"] == "float"
     assert gs["op1"] == "%val"
 
-    gs = parse.extra_slice_token(test_case_fneg_v, "fneg")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fneg_v, "fneg")
+    assert gs is not None
     assert gs["type"] == "<2 x float>"
     assert gs["op1"] == "%val"
 
-    gs = parse.extra_slice_token(test_case_add_v, "add")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_add_v, "add")
+    assert gs is not None
     assert gs["type"] == "<2 x i32>"
     assert gs["firstop"] == "< i32 1, i32 1>"
 
-    gs = parse.extra_slice_token(test_case_add, "add")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_add, "add")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
 
-    gs = parse.extra_slice_token(test_case_fadd, "fadd")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fadd, "fadd")
+    assert gs is not None
     assert gs["type"] == "float"
 
-    gs = parse.extra_slice_token(test_case_fadd_v, "fadd")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fadd_v, "fadd")
+    assert gs is not None
     assert gs["type"] == "<2 x float>"
     assert gs["firstop"] == "< float 1.0, float 1.0>"
 
-    gs = parse.extra_slice_token(test_case_sub, "sub")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_sub, "sub")
+    assert gs is not None
     assert gs["type"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_sub_v, "sub")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_sub_v, "sub")
+    assert gs is not None
     assert gs["type"] == "<2 x i32>"
     assert gs["firstop"] == "< i32 1, i32 1>"
 
-    gs = parse.extra_slice_token(test_case_fsub, "fsub")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fsub, "fsub")
+    assert gs is not None
     assert gs["type"] == "float"
 
-    gs = parse.extra_slice_token(test_case_mul, "mul")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_mul, "mul")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_fmul, "fmul")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fmul, "fmul")
+    assert gs is not None
     assert gs["type"] == "float"
 
-    gs = parse.extra_slice_token(test_case_fmul_v, "fmul")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fmul_v, "fmul")
+    assert gs is not None
     assert gs["type"] == "<2 x float>"
     assert gs["firstop"] == "< float 1.0, float 1.0>"
 
-    gs = parse.extra_slice_token(test_case_udiv, "udiv")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_udiv, "udiv")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_sdiv, "sdiv")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_sdiv, "sdiv")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_fdiv, "fdiv")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fdiv, "fdiv")
+    assert gs is not None
     assert gs["type"] == "float"
     assert gs["firstop"] == "4.0"
 
-    gs = parse.extra_slice_token(test_case_fdiv_v, "fdiv")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fdiv_v, "fdiv")
+    assert gs is not None
     assert gs["type"] == "<2 x float>"
     assert gs["firstop"] == "< float 1.0, float 1.0>"
 
-    gs = parse.extra_slice_token(test_case_urem, "urem")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_urem, "urem")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
 
-    gs = parse.extra_slice_token(test_case_srem, "srem")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_srem, "srem")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
 
-    gs = parse.extra_slice_token(test_case_frem, "frem")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_frem, "frem")
+    assert gs is not None
     assert gs["type"] == "float"
     assert gs["firstop"] == "4.0"
 
-    gs = parse.extra_slice_token(test_case_shl, "shl")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_shl, "shl")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
 
-    gs = parse.extra_slice_token(test_case_shl_v, "shl")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_shl_v, "shl")
+    assert gs is not None
     assert gs["type"] == "<2 x i32>"
     assert gs["firstop"] == "< i32 1, i32 1>"
 
-    gs = parse.extra_slice_token(test_case_lshr, "lshr")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_lshr, "lshr")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "1"
     assert gs["secondop"] == "32"
 
-    gs = parse.extra_slice_token(test_case_lshr_v, "lshr")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_lshr_v, "lshr")
+    assert gs is not None
     assert gs["type"] == "<2 x i32>"
     assert gs["firstop"] == "< i32 -2, i32 4>"
     assert gs["secondop"] == "< i32 1, i32 2>"
 
-    gs = parse.extra_slice_token(test_case_ashr_v, "ashr")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_ashr_v, "ashr")
+    assert gs is not None
     assert gs["type"] == "<2 x i32>"
     assert gs["firstop"] == "< i32 -2, i32 4>"
     assert gs["secondop"] == "< i32 1, i32 3>"
 
-    gs = parse.extra_slice_token(test_case_and, "and")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_and, "and")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_and_v, "and")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_and_v, "and")
+    assert gs is not None
     assert gs["type"] == "<2 x i32>"
     assert gs["firstop"] == "< i32 -2, i32 4>"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_or, "or")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_or, "or")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_xor, "xor")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_xor, "xor")
+    assert gs is not None
     assert gs["type"] == "i32"
     assert gs["firstop"] == "4"
     assert gs["secondop"] == "%var"
 
-    gs = parse.extra_slice_token(test_case_extractelement, "extractelement")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_extractelement, "extractelement")
+    assert gs is not None
     assert gs["vs"] == None
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
     assert gs["val"] == "< i32 8, i32 8, i32 8, i32 8>"
     assert gs["ty1"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_extractelement_vscale, "extractelement")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_extractelement_vscale, "extractelement")
+    assert gs is not None
     assert gs["vs"] == "6"
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
     assert gs["ty1"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_insertelement, "insertelement")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_insertelement, "insertelement")
+    assert gs is not None
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
     assert gs["ty1"] == "i32"
     assert gs["ty2"] == "i32"
     assert gs["val"] == "%vec"
 
-    gs = parse.extra_slice_token(test_case_insertelement_vector, "insertelement")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_insertelement_vector, "insertelement")
+    assert gs is not None
     assert gs["n"] == "4"
     assert gs["ty"] == "i32"
     assert gs["ty1"] == "i32"
     assert gs["ty2"] == "i32"
     assert gs["val"] == "< i32 8, i32 8, i32 8, i32 8>"
 
-    gs = parse.extra_slice_token(test_case_shufflevector, "shufflevector")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_shufflevector, "shufflevector")
+    assert gs is not None
     assert gs["v1_vs"] == None
     assert gs["v1_ty"] == "i32"
     assert gs["v1"] == "%v1"
     assert gs["v2_vs"] == None
     assert gs["v2_ty"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_trunc, "trunc")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_trunc, "trunc")
+    assert gs is not None
     assert gs["ty1"] == "i32"
     assert gs["val"] == "122"
 
-    gs = parse.extra_slice_token(test_case_trunc_v, "trunc")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_trunc_v, "trunc")
+    assert gs is not None
     assert gs["ty1"] == "<3 x i16>"
     assert gs["val"] == "<i16 8, i16 7, i16 8>"
 
-    gs = parse.extra_slice_token(test_case_icmp, "icmp")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_icmp, "icmp")
+    assert gs is not None
     assert gs["cond"] == "ne"
     assert gs["ty"] == "ptr"
     assert gs["op1"] == "%X"
 
-    gs = parse.extra_slice_token(test_case_fcmp, "fcmp")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_fcmp, "fcmp")
+    assert gs is not None
     assert gs["cond"] == "one"
     assert gs["ty"] == "float"
     assert gs["op1"] == "4.0"
 
-    gs = parse.extra_slice_token(test_case_select, "select")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_select, "select")
+    assert gs is not None
     assert gs["selty"] == "<N x i1>"
     assert gs["cond"] == "<i1 true, i1 true>"
     assert gs["ty1"] == "<2 x i8>"
@@ -404,110 +405,110 @@ def test_regex_sample():
     assert gs["ty2"] == "<2 x i8>"
     assert gs["op2"] == "< i8 17, i8 42>"
 
-    gs = parse.extra_slice_token(test_case_store, "store")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_store, "store")
+    assert gs is not None
     assert gs["ty"] == "i32"
     assert gs["value"] == "3"
     assert gs["ptr_ty"] == "ptr"
     assert gs["pointer"] == "%ptr"
 
-    gs = parse.extra_slice_token(test_case_store_float, "store")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_store_float, "store")
+    assert gs is not None
     assert gs["ty"] == "double"
     assert gs["value"] == "%7"
     assert gs["ptr_ty"] == "double*"
     assert gs["pointer"] == "%5"
 
-    gs = parse.extra_slice_token(test_case_alloca, "alloca")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_alloca, "alloca")
+    assert gs is not None
     assert gs["ty"] == "i32"
     assert gs["align"] == None
 
-    gs = parse.extra_slice_token(test_case_alloca_align, "alloca")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_alloca_align, "alloca")
+    assert gs is not None
     assert gs["ty"] == "i32"
     assert gs["align"] == "1024"
 
-    gs = parse.extra_slice_token(test_case_load, "load")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_load, "load")
+    assert gs is not None
     assert gs["ty"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_load_v, "load")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_load_v, "load")
+    assert gs is not None
     assert gs["ty"] == "<3 x i1>"
 
-    gs = parse.extra_slice_token(test_case_call_1, "call")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_call_1, "call")
+    assert gs is not None
     assert gs["ty"] == "i8"
 
-    gs = parse.extra_slice_token(test_case_call_2, "call")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_call_2, "call")
+    assert gs is not None
     assert gs["ty"] == "<4 x i32>"
     assert gs["function"] == "@llvm.smax.v4i32(<4 x i32> %a, <4 x i32> %b)"
 
-    gs = parse.extra_slice_token(test_case_getelementptr, "getelementptr")
+    gs = util.extra_slice_token(test_case_getelementptr, "getelementptr")
     assert len(gs.group()) == 0
 
-    gs = parse.extra_slice_token(test_case_insertvalue, "insertvalue")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_insertvalue, "insertvalue")
+    assert gs is not None
     assert gs["type"] == "{i32, float}"
     assert gs["op_val"] == "undef"
     assert gs["idx"] == "i32 1, 0"
 
-    gs = parse.extra_slice_token(test_case_extractvalue, "extractvalue")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_extractvalue, "extractvalue")
+    assert gs is not None
     assert gs["type"] == "{i32, float}"
     assert gs["op_val"] == "%agg"
     assert gs["idx"] == "0"
 
-    gs = parse.extra_slice_token(test_case_atomicrmw, "atomicrmw")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_atomicrmw, "atomicrmw")
+    assert gs is not None
     assert gs["ty"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_cmpxchg, "cmpxchg")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_cmpxchg, "cmpxchg")
+    assert gs is not None
     assert gs["ty"] == "i32"
 
-    gs = parse.extra_slice_token(test_case_ptrtoint, "ptrtoint")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_ptrtoint, "ptrtoint")
+    assert gs is not None
     assert gs["ptr_ty"] == "ptr"
     assert gs["ty"] == "i8"
 
-    gs = parse.extra_slice_token(test_case_ptrtoint_vector, "ptrtoint")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_ptrtoint_vector, "ptrtoint")
+    assert gs is not None
     assert gs["ptr_val"] == "< ptr 1, ptr 1, ptr 1, ptr 1>"
     assert gs["ty"] == "<4 x i64>"
 
-    gs = parse.extra_slice_token(test_case_inttoptr, "inttoptr")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_inttoptr, "inttoptr")
+    assert gs is not None
     assert gs["ty"] == "i32"
     assert gs["val"] == "255"
     assert gs["ptr_ty"] == "ptr"
 
-    gs = parse.extra_slice_token(test_case_inttoptr_vector, "inttoptr")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_inttoptr_vector, "inttoptr")
+    assert gs is not None
     assert gs["ty"] == "<4 x i32>"
     assert gs["val"] == "< i32 1, i32 1, i32 1, i32 1>"
     assert gs["ptr_ty"] == "<4 x ptr>"
 
-    gs = parse.extra_slice_token(test_case_bitcast, "bitcast")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_bitcast, "bitcast")
+    assert gs is not None
     assert gs["ty"] == "i16*"
     assert gs["val"] == "%x"
     assert gs["ptr_ty"] == "i32*"
 
-    gs = parse.extra_slice_token(test_case_bitcast_vec, "bitcast")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_bitcast_vec, "bitcast")
+    assert gs is not None
     assert gs["ty"] == "<2 x i64*>"
     assert gs["val"] == "%V"
     assert gs["ptr_ty"] == "<2 x i32*>"
 
-    gs = parse.extra_slice_token(test_case_addrspacecast, "addrspacecast")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_addrspacecast, "addrspacecast")
+    assert gs is not None
     assert gs["ptr_ty"] == "ptr"
 
-    gs = parse.extra_slice_token(test_case_addrspacecast_vec, "addrspacecast")
-    assert gs != None
+    gs = util.extra_slice_token(test_case_addrspacecast_vec, "addrspacecast")
+    assert gs is not None
     assert gs["ptr_ty"] == "<4 x ptr>"
 
 
@@ -633,7 +634,7 @@ def test_is_vector_type_basedon_dict_token():
         "v2": "%v2",
         "v3": "< i32 0, i32 4, i32 1, i32 5>",
     }
-    assert parse.is_vectortype_basedon_dict_token(X, "", "") == False
+    assert parse.is_vectortype_basedon_dict_token(X, "", "") is False
 
 
 def test_parse_instr_llvm_abs():
@@ -806,3 +807,5 @@ if __name__ == "__main__":
     test_parse_instr_select()
     test_parse_instr_mem()
     test_parse_instr_ptrInvolved()
+    for line in test_case_float_simple:
+        print(line)

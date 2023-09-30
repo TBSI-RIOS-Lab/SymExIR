@@ -1,10 +1,34 @@
 from enum import Enum
 from typing import Dict, List
-import z3
-from config import *
-from utilComputeFunc import normalizedFloatingPoint_to_Decimal
-from util import get_instr_dict, get_instr_type, get_instr_value_name, is_vec_smt_type, pretty_smt_list
+
 import regex as re
+import z3
+from util import (
+    get_instr_dict,
+    get_instr_type,
+    get_instr_value_name,
+    get_normal_str_from_z3_type,
+    is_vec_smt_type,
+    pretty_smt_list,
+)
+from utilComputeFunc import normalizedFloatingPoint_to_Decimal
+
+SOLVER_MAX_MEMORY = 25 * 1024
+
+# Solver timeout (in seconds) or 0 for "no limit".
+SOLVER_TIMEOUT = 5 * 60
+
+# Size of anonymous memory size blocks we may need to introduce (for example,
+# so that function pointer arguments have memory to point to).
+ANON_MEM_SIZE = 64
+
+# How many bytes load, store, __builtin_memset, etc. can expand.
+MAX_MEMORY_UNROLL_LIMIT = 10000
+
+# How the pointer bits are divided between id and offset.
+PTR_OFFSET_BITS = 40
+PTR_ID_BITS = 24
+assert PTR_ID_BITS + PTR_OFFSET_BITS == 64
 
 uninplement_instr = [
     "ret",
@@ -70,7 +94,6 @@ class DataType(Enum):
 
 
 class Var:
-
     def __init__(
         self, data_type: str, value_name: str, real_value, is_immediate: bool = False
     ) -> None:
@@ -123,7 +146,8 @@ class LoadAssertInfo:
 
     def dump(self):
         for item in self.loc_value:
-            print(item) 
+            print(item)
+
 
 class VerificationLoadInfo:
     """Contain all information before the."""
@@ -221,8 +245,8 @@ class VerificationContext:
             print(str(key), self.var2type[key], str(self.smt_list[loc]))
 
     def value_str_pretty(self) -> str:
-        """ Print the list in smt better.
-            just like < i32 123, i32 3244, i32 999>."""
+        """Print the list in smt better.
+        just like < i32 123, i32 3244, i32 999>."""
         res = str()
         number = 0
         for key, _ in self.var2list.items():
@@ -231,11 +255,14 @@ class VerificationContext:
             out_str = str()
             print(value_type)
             if is_vec_smt_type(value_type):
-                out_value_list = [str(single_value) for single_value in self.smt_list[loc]]
+                out_value_list = [
+                    get_normal_str_from_z3_type(single_value)
+                    for single_value in self.smt_list[loc]
+                ]
                 out_str = pretty_smt_list(value_type, out_value_list)
             else:
-                out_str = str(self.smt_list[loc])
-            res += str(number) + " , " + '"' + out_str + '"' + '\n'
+                out_str = get_normal_str_from_z3_type(self.smt_list[loc])
+            res += str(number) + " , " + '"' + out_str + '"' + "\n"
             number += 1
         return res
 
@@ -243,9 +270,13 @@ class VerificationContext:
         for key in self.var2list.keys():
             loc = self.var2list[key]
             if not isinstance(self.smt_list[loc], z3.FPRef):
-                print(str(key), self.var2type[key], str(self.smt_list[loc]))     
+                print(str(key), self.var2type[key], str(self.smt_list[loc]))
             else:
-                print(str(key), self.var2type[key], normalizedFloatingPoint_to_Decimal(str(self.smt_list[loc])))                   
+                print(
+                    str(key),
+                    self.var2type[key],
+                    normalizedFloatingPoint_to_Decimal(str(self.smt_list[loc])),
+                )
 
     def dump_with_type(self):
         for key in self.var2list.keys():
@@ -302,7 +333,7 @@ def get_llvmInstrs_from_file(file_path: str) -> List[str]:
 
 def get_verifyInfo_from_file(file_path: str) -> LoadAssertInfo:
     lines = []
-    with open(file_path, "r+", encoding= "utf8+") as f:
+    with open(file_path, "r+", encoding="utf8+") as f:
         lines = f.readlines()
     lines = [line.strip() for line in lines]
     re_b = []
@@ -315,7 +346,7 @@ def get_verifyInfo_from_file(file_path: str) -> LoadAssertInfo:
         first_p, second_p = match.group(1), match.group(2)
         first_p = first_p.strip('"')
         second_p = second_p.strip('"')
-        print(second_p)
+        # print(second_p)
         veri_info = list()
         veri_info.append(int(first_p))
         veri_info.append(second_p)
@@ -323,7 +354,10 @@ def get_verifyInfo_from_file(file_path: str) -> LoadAssertInfo:
         re_b.append(tup)
     return LoadAssertInfo(re_b)
 
-def get_verificationloadinfo_from_file(instr_path: str, assert_path: str) -> VerificationLoadInfo:
+
+def get_verificationloadinfo_from_file(
+    instr_path: str, assert_path: str
+) -> VerificationLoadInfo:
     load_info = get_verifyInfo_from_file(assert_path)
     instrs = get_llvmInstrs_from_file(instr_path)
     return VerificationLoadInfo(instrs, load_info)

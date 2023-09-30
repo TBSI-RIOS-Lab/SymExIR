@@ -1,0 +1,13 @@
+%1 = load double, double* %5, align 8, !tbaa !4
+%6 = load double, double* %5, align 8, !tbaa !4
+%7 = fadd double %6, %1
+%9 = load double, double* %8, align 8, !tbaa !4
+%10 = fadd double %9, %1
+%11 = fmul double %10, %1
+%12 = fdiv double %10, %1
+%13 = fsub double %10, %1
+%14 = fadd double %10, %1
+%15 = frem double %10, %1
+%16 = fneg double %10
+%17 = fadd float 4.01, 4.02
+%18 = fadd double 4.01, 4.02
